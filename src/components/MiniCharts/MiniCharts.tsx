@@ -14,7 +14,7 @@ export default function MiniCharts({
     color: string;
 }) {
   const { dailyCounts, outCount, inCount, missedCount, maxDaily, totalTime } = useMemo(() => {
-    const counts = [0, 0, 0, 0, 0, 0, 0]; // Sun to Sat
+    const counts = [0, 0, 0, 0, 0, 0, 0];
     let outCount = 0;
     let inCount = 0;
     let missedCount = 0;
@@ -43,7 +43,6 @@ export default function MiniCharts({
   const outPercent = (outCount / total) * 100;
   const inPercent = (inCount / total) * 100;
   
-  // Donut chart setup (stroke-dasharray based)
   const radius = 22;
   const circumference = 2 * Math.PI * radius;
   const outDash = (outPercent / 100) * circumference;
@@ -64,7 +63,6 @@ export default function MiniCharts({
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 3, animation: 'fadeUp 0.6s ease-out forwards' }}>
       
-      {/* Card 1: Bar Chart */}
       <Box sx={cardStyle}>
         <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text2)', mb: 2 }}>
           CALLS BY DAY
@@ -91,7 +89,6 @@ export default function MiniCharts({
         </Box>
       </Box>
 
-      {/* Card 2: Donut */}
       <Box sx={cardStyle}>
         <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text2)', mb: 2 }}>
           DIRECTION SPLIT
@@ -99,12 +96,9 @@ export default function MiniCharts({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flex: 1 }}>
           <Box sx={{ position: 'relative', width: 54, height: 54 }}>
             <svg width="54" height="54" viewBox="0 0 54 54" style={{ transform: 'rotate(-90deg)' }}>
-              {/* background */}
               <circle cx="27" cy="27" r={radius} fill="none" stroke="var(--surface3)" strokeWidth="6" />
-              {/* Outbound arc (cyan) */}
               <circle cx="27" cy="27" r={radius} fill="none" stroke="var(--accent)" strokeWidth="6" 
                 strokeDasharray={`${outDash} ${circumference}`} />
-              {/* Inbound arc (purple) offset by outbound length */}
               <circle cx="27" cy="27" r={radius} fill="none" stroke="var(--purple)" strokeWidth="6" 
                 strokeDasharray={`${inDash} ${circumference}`} strokeDashoffset={-outDash} />
             </svg>
@@ -117,7 +111,6 @@ export default function MiniCharts({
         </Box>
       </Box>
 
-      {/* Card 3: Summary + Timeline */}
       <Box sx={cardStyle}>
          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
            <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color }}>

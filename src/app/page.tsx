@@ -23,7 +23,7 @@ export default function Home() {
 
   const getInitialDate = () => {
     const d = new Date();
-    d.setDate(d.getDate() - 365); // fetch a year for local offline filtering
+    d.setDate(d.getDate() - 365);
     return d.toISOString().split('T')[0];
   };
 
@@ -49,7 +49,7 @@ export default function Home() {
     setStatusOk(null);
 
     try {
-      // 1. Authenticate
+
       setLoadingMsg('Connecting...');
       const tokenRes = await fetch('/api/token', {
         method: 'POST',
@@ -67,7 +67,7 @@ export default function Home() {
       setAccessToken(token);
       setStatusOk(true);
 
-      // 2. Fetch Users
+
       setLoadingMsg('Loading users...');
       let allFoundUsers: RCUser[] = [];
       let nextUrl = '/api/rc/v1.0/account/~/extension?type=User&status=Enabled&perPage=100&page=1';
@@ -86,13 +86,13 @@ export default function Home() {
          }
       }
       
-      // Filter only specific users
+
       const whitelist = ['Alex Chester', 'Charles White', 'Ethan Parker', 'Tony Royce'];
       const filteredFoundUsers = allFoundUsers.filter(u => whitelist.includes(u.name));
       
       setUsers(filteredFoundUsers);
 
-      // 3. Fetch Calls for each user
+
       const callsMap: UserCalls = {};
       
       for (let i = 0; i < filteredFoundUsers.length; i++) {
@@ -106,7 +106,6 @@ export default function Home() {
         while (callPageUrl && pagesLoaded < 5) {
             const callsRes = await fetch(callPageUrl, { headers: { 'x-rc-auth': token } });
             if (!callsRes.ok) {
-                // If specific user logging fails, just continue
                 break;
             }
             const callsData = await callsRes.json();
@@ -163,7 +162,7 @@ export default function Home() {
                 selectedUser={selectedUser} 
                 onSelect={setSelectedUser} 
             />
-            {/* Main Content Area */}
+
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <StatsRow users={users} allCalls={allCalls} />
               {selectedUser ? (

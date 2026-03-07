@@ -22,12 +22,10 @@ export default function UserDetail({
   const [customDateTo, setCustomDateTo] = useState('');
 
   const filteredCalls = useMemo(() => {
-    // 1. Filter by direction/result
     let result = calls;
     if (activeFilter === 'Missed') result = result.filter(c => c.result === 'Missed');
     else if (activeFilter !== 'All') result = result.filter(c => c.direction === activeFilter);
     
-    // 2. Filter by timeframe based on today relative to startTime
     const now = new Date();
     const cutoffDate = new Date(now);
     
@@ -78,7 +76,6 @@ export default function UserDetail({
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {/* Header Row */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
           <Avatar sx={{ bgcolor: userColor, width: 64, height: 64, borderRadius: 3, fontSize: '1.5rem', fontWeight: 700, color: '#fff' }}>
@@ -182,10 +179,8 @@ export default function UserDetail({
         </Box>
       </Box>
 
-      {/* Mini Charts */}
       <MiniCharts user={user} calls={filteredCalls} userIndex={userIndex} color={userColor} />
 
-      {/* Call Table */}
       <CallTable calls={filteredCalls} maxDuration={maxDuration} />
     </Box>
   );

@@ -33,14 +33,14 @@ export function getInitials(name: string): string {
 }
   
 export const COLORS = [
-    '#00d9f5', // cyan
-    '#ff4566', // red
-    '#9b7dff', // purple
-    '#00e09a', // green
-    '#ffcc44', // yellow
-    '#ff8c42', // orange
-    '#4db8ff', // light blue
-    '#ff6b9d'  // pink
+    '#00d9f5',
+    '#ff4566',
+    '#9b7dff',
+    '#00e09a',
+    '#ffcc44',
+    '#ff8c42',
+    '#4db8ff',
+    '#ff6b9d'
 ];
   
 export function getColor(index: number): string {
