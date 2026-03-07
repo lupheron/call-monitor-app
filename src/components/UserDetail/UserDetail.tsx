@@ -1,0 +1,192 @@
+'use client';
+
+import { Box, Typography, Avatar, ToggleButtonGroup, ToggleButton, TextField } from '@mui/material';
+import { RCUser, CallRecord } from '@/types';
+import { getInitials, getColor } from '@/utils/helpers';
+import { useState, useMemo } from 'react';
+import MiniCharts from '../MiniCharts/MiniCharts';
+import CallTable from '../CallTable/CallTable';
+
+export default function UserDetail({
+  user,
+  calls,
+  userIndex
+}: {
+  user: RCUser;
+  calls: CallRecord[];
+  userIndex: number;
+}) {
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Outbound' | 'Inbound' | 'Missed'>('All');
+  const [timeRange, setTimeRange] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Yearly' | 'Custom'>('Weekly');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
+
+  const filteredCalls = useMemo(() => {
+    // 1. Filter by direction/result
+    let result = calls;
+    if (activeFilter === 'Missed') result = result.filter(c => c.result === 'Missed');
+    else if (activeFilter !== 'All') result = result.filter(c => c.direction === activeFilter);
+    
+    // 2. Filter by timeframe based on today relative to startTime
+    const now = new Date();
+    const cutoffDate = new Date(now);
+    
+    if (timeRange === 'Daily') {
+       cutoffDate.setDate(now.getDate() - 1);
+       result = result.filter(c => new Date(c.startTime) >= cutoffDate);
+    } else if (timeRange === 'Weekly') {
+       cutoffDate.setDate(now.getDate() - 7);
+       result = result.filter(c => new Date(c.startTime) >= cutoffDate);
+    } else if (timeRange === 'Monthly') {
+       cutoffDate.setMonth(now.getMonth() - 1);
+       result = result.filter(c => new Date(c.startTime) >= cutoffDate);
+    } else if (timeRange === 'Yearly') {
+       cutoffDate.setFullYear(now.getFullYear() - 1);
+       result = result.filter(c => new Date(c.startTime) >= cutoffDate);
+    } else if (timeRange === 'Custom') {
+       if (customDateFrom) {
+         result = result.filter(c => new Date(c.startTime) >= new Date(customDateFrom));
+       }
+       if (customDateTo) {
+         const to = new Date(customDateTo);
+         to.setHours(23, 59, 59, 999);
+         result = result.filter(c => new Date(c.startTime) <= to);
+       }
+    }
+
+    return result;
+  }, [calls, activeFilter, timeRange, customDateFrom, customDateTo]);
+
+  const maxDuration = useMemo(() => {
+    if (!filteredCalls.length) return 1;
+    return Math.max(...filteredCalls.map(c => c.duration));
+  }, [filteredCalls]);
+
+  const handleFilterChange = (event: React.MouseEvent<HTMLElement>, newFilter: typeof activeFilter) => {
+    if (newFilter !== null) setActiveFilter(newFilter);
+  };
+
+  const handleTimeRangeChange = (event: React.MouseEvent<HTMLElement>, newRange: typeof timeRange) => {
+    if (newRange !== null) setTimeRange(newRange);
+  };
+
+  const phoneNumbersString = user.phoneNumbers
+      ? user.phoneNumbers.map(n => n.phoneNumber).filter(Boolean).join(', ')
+      : 'No direct number';
+
+  const userColor = getColor(userIndex);
+
+  return (
+    <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {/* Header Row */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+          <Avatar sx={{ bgcolor: userColor, width: 64, height: 64, borderRadius: 3, fontSize: '1.5rem', fontWeight: 700, color: '#fff' }}>
+            {getInitials(user.name)}
+          </Avatar>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: 'var(--text)', mb: 0.5 }}>
+              {user.name}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+              <Typography sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text2)' }}>
+                {phoneNumbersString}
+              </Typography>
+              <Typography sx={{ fontSize: '0.85rem', color: 'var(--text3)' }}>
+                Ext {user.extensionNumber} &middot; {user.contact?.department || 'Unknown Dept'}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+            <ToggleButtonGroup
+            value={timeRange}
+            exclusive
+            onChange={handleTimeRangeChange}
+            color="primary"
+            size="small"
+            sx={{
+                backgroundColor: 'var(--surface2)',
+                '& .MuiToggleButton-root': {
+                color: 'var(--text2)',
+                border: '1px solid var(--border)',
+                borderColor: 'var(--border2)',
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                px: 2,
+                py: 0.5,
+                '&.Mui-selected': {
+                    color: '#fff',
+                    backgroundColor: 'var(--surface3)'
+                }
+                }
+            }}
+            >
+            <ToggleButton value="Daily">Daily</ToggleButton>
+            <ToggleButton value="Weekly">Weekly</ToggleButton>
+            <ToggleButton value="Monthly">Monthly</ToggleButton>
+            <ToggleButton value="Yearly">Yearly</ToggleButton>
+            <ToggleButton value="Custom">Custom</ToggleButton>
+            </ToggleButtonGroup>
+
+            {timeRange === 'Custom' && (
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  type="date"
+                  size="small"
+                  value={customDateFrom}
+                  onChange={(e) => setCustomDateFrom(e.target.value)}
+                  sx={{ width: 140, '& .MuiOutlinedInput-root': { height: 32, fontSize: '0.75rem' }, input: { color: 'var(--text)' }, '& fieldset': { borderColor: 'var(--border2)' } }}
+                />
+                <TextField
+                  type="date"
+                  size="small"
+                  value={customDateTo}
+                  onChange={(e) => setCustomDateTo(e.target.value)}
+                  sx={{ width: 140, '& .MuiOutlinedInput-root': { height: 32, fontSize: '0.75rem' }, input: { color: 'var(--text)' }, '& fieldset': { borderColor: 'var(--border2)' } }}
+                />
+              </Box>
+            )}
+
+            <ToggleButtonGroup
+          value={activeFilter}
+          exclusive
+          onChange={handleFilterChange}
+          color="primary"
+          size="small"
+          sx={{
+            backgroundColor: 'var(--surface2)',
+            '& .MuiToggleButton-root': {
+              color: 'var(--text2)',
+              border: '1px solid var(--border2)',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 2,
+              '&.Mui-selected': {
+                color: '#fff',
+                backgroundColor: activeFilter === 'Outbound' ? 'var(--accent)' 
+                               : activeFilter === 'Inbound' ? 'var(--purple)' 
+                               : activeFilter === 'Missed' ? 'var(--red)' 
+                               : 'var(--accent)',
+              }
+            }
+          }}
+        >
+          <ToggleButton value="All">All</ToggleButton>
+          <ToggleButton value="Outbound">Outbound</ToggleButton>
+          <ToggleButton value="Inbound">Inbound</ToggleButton>
+          <ToggleButton value="Missed">Missed</ToggleButton>
+        </ToggleButtonGroup>
+        </Box>
+      </Box>
+
+      {/* Mini Charts */}
+      <MiniCharts user={user} calls={filteredCalls} userIndex={userIndex} color={userColor} />
+
+      {/* Call Table */}
+      <CallTable calls={filteredCalls} maxDuration={maxDuration} />
+    </Box>
+  );
+}
