@@ -15,14 +15,16 @@ export function fmtDuration(sec: number): string {
   
 export function fmtDate(dateStr: string): string {
     const date = new Date(dateStr);
-    return date.toLocaleString('en-US', {
+    // Use a fixed timezone so SSR and client render the same HTML
+    return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
-    });
+      timeZone: 'UTC',
+    }).format(date);
 }
   
 export function getInitials(name: string): string {

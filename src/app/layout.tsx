@@ -27,11 +27,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${syne.variable} ${ibmPlexMono.variable}`}>
-        <Providers>
-          <div className="glow-orb top-left" />
-          <div className="glow-orb bottom-right" />
-          {children}
-        </Providers>
+        <div className="glow-orb top-left" />
+        <div className="glow-orb bottom-right" />
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

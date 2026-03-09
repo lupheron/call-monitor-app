@@ -1,35 +1,36 @@
 'use client';
 
 import { useState } from 'react';
-import { Box } from '@mui/material';
+import { Box, LinearProgress, Typography, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import Header from '@/components/Header/Header';
 import ConfigPanel from '@/components/ConfigPanel/ConfigPanel';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import StatsRow from '@/components/StatsRow/StatsRow';
 import UserDetail from '@/components/UserDetail/UserDetail';
+import DashboardOverview from '@/components/DashboardOverview/DashboardOverview';
 import { RCUser, UserCalls } from '@/types';
 
+const WHITELIST = ['Alex Chester', 'Charles White', 'Ethan Parker', 'Tony Royce'];
+
 export default function Home() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [users, setUsers] = useState<RCUser[]>([]);
   const [allCalls, setAllCalls] = useState<UserCalls>({});
   const [selectedUser, setSelectedUser] = useState<RCUser | null>(null);
-  
+  const [activeView, setActiveView] = useState<'overview' | 'user'>('overview');
+
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [statusOk, setStatusOk] = useState<boolean | null>(null);
   const [showConfig, setShowConfig] = useState(true);
+  const [syncPhase, setSyncPhase] = useState<'idle' | 'syncing' | 'done'>('idle');
 
   const getInitialDate = () => {
     const d = new Date();
-    d.setDate(d.getDate() - 365);
+    d.setFullYear(d.getFullYear() - 1);
     return d.toISOString().split('T')[0];
   };
-
-  const getToday = () => {
-    return new Date().toISOString().split('T')[0];
-  };
+  const getToday = () => new Date().toISOString().split('T')[0];
 
   const [credentials, setCredentials] = useState({
     clientId: 'aFivteBC64Rd0Y09JKEB5V',
@@ -38,6 +39,23 @@ export default function Home() {
     dateFrom: getInitialDate(),
     dateTo: getToday()
   });
+
+  const loadCallsFromDb = async (filteredUsers: RCUser[]) => {
+    const ids = filteredUsers.map(u => u.id).join(',');
+    try {
+      const res = await fetch(`/api/calls?range=all&extensionIds=${ids}`);
+      const data = await res.json();
+      const newMap: UserCalls = {};
+      filteredUsers.forEach(u => newMap[u.id] = []);
+      (data.records || []).forEach((c: any) => {
+        const extId = parseInt(c.extension.id);
+        if (newMap[extId] !== undefined) newMap[extId].push(c);
+      });
+      setAllCalls(newMap);
+    } catch (e) {
+      console.error('Failed to load calls from DB', e);
+    }
+  };
 
   const handleCredentialChange = (field: string, value: string) => {
     setCredentials(prev => ({ ...prev, [field]: value }));
@@ -49,7 +67,7 @@ export default function Home() {
     setStatusOk(null);
 
     try {
-
+      // Step 1: Get token
       setLoadingMsg('Connecting...');
       const tokenRes = await fetch('/api/token', {
         method: 'POST',
@@ -60,122 +78,147 @@ export default function Home() {
           jwt: credentials.jwt
         })
       });
-
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok) throw new Error(tokenData.error || 'Authentication failed');
       const token = tokenData.access_token;
-      setAccessToken(token);
       setStatusOk(true);
 
-
+      // Step 2: Get users
       setLoadingMsg('Loading users...');
       let allFoundUsers: RCUser[] = [];
       let nextUrl = '/api/rc/v1.0/account/~/extension?type=User&status=Enabled&perPage=100&page=1';
-      
       while (nextUrl) {
-         const usersRes = await fetch(nextUrl, { headers: { 'x-rc-auth': token } });
-         const usersData = await usersRes.json();
-         if (!usersRes.ok) throw new Error(usersData.error || 'Failed to load users');
-         
-         allFoundUsers = [...allFoundUsers, ...usersData.records];
-         
-         if (usersData.navigation?.nextPage) {
-            nextUrl = usersData.navigation.nextPage.uri.replace('https://platform.ringcentral.com/restapi', '/api/rc');
-         } else {
-            nextUrl = '';
-         }
+        const usersRes = await fetch(nextUrl, { headers: { 'x-rc-auth': token } });
+        const usersData = await usersRes.json();
+        if (!usersRes.ok) throw new Error(usersData.error || 'Failed to load users');
+        allFoundUsers = [...allFoundUsers, ...usersData.records];
+        nextUrl = usersData.navigation?.nextPage
+          ? usersData.navigation.nextPage.uri.replace('https://platform.ringcentral.com/restapi', '/api/rc')
+          : '';
       }
-      
+      const filteredUsers = allFoundUsers.filter(u => WHITELIST.includes(u.name));
+      setUsers(filteredUsers);
+      if (filteredUsers.length > 0) setSelectedUser(filteredUsers[0]);
 
-      const whitelist = ['Alex Chester', 'Charles White', 'Ethan Parker', 'Tony Royce'];
-      const filteredFoundUsers = allFoundUsers.filter(u => whitelist.includes(u.name));
-      
-      setUsers(filteredFoundUsers);
+      // Step 3: Check if we already have cached data in SQLite
+      const ids = filteredUsers.map(u => u.id).join(',');
+      const cachedRes = await fetch(`/api/calls?range=all&extensionIds=${ids}`);
+      const cachedData = await cachedRes.json();
+      const hasCachedData = (cachedData.records || []).length > 0;
 
-
-      const callsMap: UserCalls = {};
-      
-      for (let i = 0; i < filteredFoundUsers.length; i++) {
-        const u = filteredFoundUsers[i];
-        setLoadingMsg(`Loading calls (${i + 1}/${filteredFoundUsers.length})...`);
-        
-        let userCallRecords: any[] = [];
-        let callPageUrl = `/api/rc/v1.0/account/~/extension/${u.id}/call-log?view=Detailed&dateFrom=${credentials.dateFrom}T00:00:00.000Z&dateTo=${credentials.dateTo}T23:59:59.000Z&perPage=100&page=1`;
-        let pagesLoaded = 0;
-
-        while (callPageUrl && pagesLoaded < 5) {
-            const callsRes = await fetch(callPageUrl, { headers: { 'x-rc-auth': token } });
-            if (!callsRes.ok) {
-                break;
-            }
-            const callsData = await callsRes.json();
-            userCallRecords = [...userCallRecords, ...(callsData.records || [])];
-            
-            if (callsData.navigation?.nextPage) {
-                const queryParams = new URL(callsData.navigation.nextPage.uri).search;
-                callPageUrl = `/api/rc/v1.0/account/~/extension/${u.id}/call-log${queryParams}`;
-            } else {
-                callPageUrl = '';
-            }
-            pagesLoaded++;
-        }
-        
-        callsMap[u.id] = userCallRecords;
+      if (hasCachedData) {
+        // Serve from DB instantly
+        await loadCallsFromDb(filteredUsers);
+        setShowConfig(false);
+        setIsLoading(false);
+        setSyncPhase('done');
+      } else {
+        // Show dashboard empty, then start sync
+        setShowConfig(false);
+        setIsLoading(false);
+        setSyncPhase('syncing');
       }
 
-      setAllCalls(callsMap);
+      // Step 4: Background sync via account-level endpoint (only 5 requests total!)
+      const extensionIds = filteredUsers.map(u => u.id);
+      const syncRes = await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, extensionIds })
+      });
 
-      if (filteredFoundUsers.length > 0) {
-        setSelectedUser(filteredFoundUsers[0]);
+      if (syncRes.ok) {
+        // Reload from DB after sync
+        await loadCallsFromDb(filteredUsers);
+        setSyncPhase('done');
       }
-      
-      setShowConfig(false);
+
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
       setStatusOk(false);
-    } finally {
       setIsLoading(false);
     }
   };
 
   const status = error ? 'error' : statusOk ? 'connected' : 'idle';
 
+  const handleSelectUser = (user: RCUser) => {
+    setSelectedUser(user);
+    setActiveView('user');
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
       <Header status={status} />
-      
+
+      {syncPhase === 'syncing' && (
+        <Box sx={{ px: 2, py: 0.5, background: 'var(--surface2)', display: 'flex', alignItems: 'center', gap: 2 }}>
+          <LinearProgress sx={{ flex: 1, height: 3, borderRadius: 2, '& .MuiLinearProgress-bar': { background: 'var(--accent)' } }} />
+          <Typography sx={{ fontSize: '0.75rem', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+            Fetching call history… please wait
+          </Typography>
+        </Box>
+      )}
+
       <Box sx={{ flex: 1, display: 'flex', position: 'relative', minHeight: 0 }}>
         {showConfig ? (
-          <ConfigPanel 
-            credentials={credentials} 
-            onChange={handleCredentialChange} 
-            onLoad={handleLoad} 
-            isLoading={isLoading} 
-            loadingMsg={loadingMsg} 
-            error={error} 
+          <ConfigPanel
+            credentials={credentials}
+            onChange={handleCredentialChange}
+            onLoad={handleLoad}
+            isLoading={isLoading}
+            loadingMsg={loadingMsg}
+            error={error}
           />
         ) : (
           <>
-            <Sidebar 
-                users={users} 
-                allCalls={allCalls} 
-                selectedUser={selectedUser} 
-                onSelect={setSelectedUser} 
+            <Sidebar
+              users={users}
+              allCalls={allCalls}
+              selectedUser={selectedUser}
+              onSelect={handleSelectUser}
             />
-
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <StatsRow users={users} allCalls={allCalls} />
-              {selectedUser ? (
-                  <UserDetail 
-                      user={selectedUser} 
-                      calls={allCalls[selectedUser.id] || []} 
-                      userIndex={users.findIndex(u => u.id === selectedUser.id)} 
-                  />
-              ) : (
-                  <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Box sx={{ color: 'var(--text2)', fontFamily: 'var(--font-mono)' }}>No user selected</Box>
-                  </Box>
-              )}
+              <Box sx={{ px: 3, pt: 2, pb: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                <ToggleButtonGroup
+                  value={activeView}
+                  exclusive
+                  onChange={(_, v) => v && setActiveView(v)}
+                  size="small"
+                  sx={{
+                    backgroundColor: 'var(--surface2)',
+                    '& .MuiToggleButton-root': {
+                      color: 'var(--text2)',
+                      border: '1px solid var(--border2)',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      px: 2,
+                      py: 0.5,
+                      '&.Mui-selected': {
+                        color: '#fff',
+                        backgroundColor: 'var(--surface3)',
+                      },
+                    },
+                  }}
+                >
+                  <ToggleButton value="overview">Dashboard</ToggleButton>
+                  <ToggleButton value="user" disabled={!selectedUser}>
+                    User detail
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+              {activeView === 'overview' ? (
+                <DashboardOverview users={users} allCalls={allCalls} />
+              ) : selectedUser ? (
+                <UserDetail
+                  user={selectedUser}
+                  calls={allCalls[selectedUser.id] || []}
+                  userIndex={users.findIndex(u => u.id === selectedUser.id)}
+                  syncPhase={syncPhase}
+                />
+              ) : null}
             </Box>
           </>
         )}

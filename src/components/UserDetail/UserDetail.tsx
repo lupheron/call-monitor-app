@@ -10,46 +10,49 @@ import CallTable from '../CallTable/CallTable';
 export default function UserDetail({
   user,
   calls,
-  userIndex
+  userIndex,
+  syncPhase
 }: {
   user: RCUser;
   calls: CallRecord[];
   userIndex: number;
+  syncPhase: 'idle' | 'syncing' | 'done';
 }) {
   const [activeFilter, setActiveFilter] = useState<'All' | 'Outbound' | 'Inbound' | 'Missed'>('All');
-  const [timeRange, setTimeRange] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Yearly' | 'Custom'>('Weekly');
+  // Default to the broadest window so you always see the
+  // latest history (up to 500 calls per user from the DB).
+  const [timeRange, setTimeRange] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Yearly' | 'Custom'>('Yearly');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
+
+  const historyReady = syncPhase === 'done';
 
   const filteredCalls = useMemo(() => {
     let result = calls;
     if (activeFilter === 'Missed') result = result.filter(c => c.result === 'Missed');
     else if (activeFilter !== 'All') result = result.filter(c => c.direction === activeFilter);
-    
+
     const now = new Date();
-    const cutoffDate = new Date(now);
-    
+    const cutoff = new Date(now);
     if (timeRange === 'Daily') {
-       cutoffDate.setDate(now.getDate() - 1);
-       result = result.filter(c => new Date(c.startTime) >= cutoffDate);
+      cutoff.setDate(now.getDate() - 1);
+      result = result.filter(c => new Date(c.startTime) >= cutoff);
     } else if (timeRange === 'Weekly') {
-       cutoffDate.setDate(now.getDate() - 7);
-       result = result.filter(c => new Date(c.startTime) >= cutoffDate);
+      cutoff.setDate(now.getDate() - 7);
+      result = result.filter(c => new Date(c.startTime) >= cutoff);
     } else if (timeRange === 'Monthly') {
-       cutoffDate.setMonth(now.getMonth() - 1);
-       result = result.filter(c => new Date(c.startTime) >= cutoffDate);
+      cutoff.setMonth(now.getMonth() - 1);
+      result = result.filter(c => new Date(c.startTime) >= cutoff);
     } else if (timeRange === 'Yearly') {
-       cutoffDate.setFullYear(now.getFullYear() - 1);
-       result = result.filter(c => new Date(c.startTime) >= cutoffDate);
+      cutoff.setFullYear(now.getFullYear() - 1);
+      result = result.filter(c => new Date(c.startTime) >= cutoff);
     } else if (timeRange === 'Custom') {
-       if (customDateFrom) {
-         result = result.filter(c => new Date(c.startTime) >= new Date(customDateFrom));
-       }
-       if (customDateTo) {
-         const to = new Date(customDateTo);
-         to.setHours(23, 59, 59, 999);
-         result = result.filter(c => new Date(c.startTime) <= to);
-       }
+      if (customDateFrom) result = result.filter(c => new Date(c.startTime) >= new Date(customDateFrom));
+      if (customDateTo) {
+        const to = new Date(customDateTo);
+        to.setHours(23, 59, 59, 999);
+        result = result.filter(c => new Date(c.startTime) <= to);
+      }
     }
 
     return result;
@@ -122,10 +125,10 @@ export default function UserDetail({
             }}
             >
             <ToggleButton value="Daily">Daily</ToggleButton>
-            <ToggleButton value="Weekly">Weekly</ToggleButton>
-            <ToggleButton value="Monthly">Monthly</ToggleButton>
-            <ToggleButton value="Yearly">Yearly</ToggleButton>
-            <ToggleButton value="Custom">Custom</ToggleButton>
+            <ToggleButton value="Weekly" disabled={!historyReady}>Weekly {!historyReady ? '⏳' : ''}</ToggleButton>
+            <ToggleButton value="Monthly" disabled={!historyReady}>Monthly {!historyReady ? '⏳' : ''}</ToggleButton>
+            <ToggleButton value="Yearly" disabled={!historyReady}>Yearly {!historyReady ? '⏳' : ''}</ToggleButton>
+            <ToggleButton value="Custom" disabled={!historyReady}>Custom {!historyReady ? '⏳' : ''}</ToggleButton>
             </ToggleButtonGroup>
 
             {timeRange === 'Custom' && (
