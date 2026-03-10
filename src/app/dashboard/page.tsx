@@ -26,6 +26,7 @@ export default function Home() {
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
     const [syncPhase, setSyncPhase] = useState<'idle' | 'syncing' | 'done'>('idle');
     const router = useRouter();
+    const { waitingFetchState } = useGlobalContext();
 
     const getInitialDate = () => {
         const d = new Date();
@@ -170,6 +171,17 @@ export default function Home() {
             setIsCheckingAuth(false);
         }
     }, []);
+
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (waitingFetchState.hasFetched || waitingFetchState.isFetching) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [waitingFetchState.hasFetched, waitingFetchState.isFetching]);
 
     const handleCredentialChange = (field: string, value: string) => {
         setCredentials(prev => ({ ...prev, [field]: value }));
