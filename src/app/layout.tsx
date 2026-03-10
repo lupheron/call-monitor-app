@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Syne, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/Providers';
+import { GlobalProvider } from '@/components/GlobalContext';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -27,9 +28,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${syne.variable} ${ibmPlexMono.variable}`}>
+        <Providers>
+          <GlobalProvider>{children}</GlobalProvider>
+        </Providers>
         <div className="glow-orb top-left" />
         <div className="glow-orb bottom-right" />
-        <Providers>{children}</Providers>
       </body>
     </html>
   );

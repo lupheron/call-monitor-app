@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, LinearProgress, Typography, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import Header from '@/components/Header/Header';
 import ConfigPanel from '@/components/ConfigPanel/ConfigPanel';
@@ -9,14 +9,14 @@ import StatsRow from '@/components/StatsRow/StatsRow';
 import UserDetail from '@/components/UserDetail/UserDetail';
 import DashboardOverview from '@/components/DashboardOverview/DashboardOverview';
 import { RCUser, UserCalls } from '@/types';
+import { useGlobalContext } from '@/components/GlobalContext';
 
 const WHITELIST = ['Alex Chester', 'Charles White', 'Ethan Parker', 'Tony Royce'];
 
 export default function Home() {
-  const [users, setUsers] = useState<RCUser[]>([]);
-  const [allCalls, setAllCalls] = useState<UserCalls>({});
-  const [selectedUser, setSelectedUser] = useState<RCUser | null>(null);
+  const { users, setUsers, allCalls, setAllCalls, selectedUser, setSelectedUser, globalDateFilter, setGlobalDateFilter } = useGlobalContext();
   const [activeView, setActiveView] = useState<'overview' | 'user'>('overview');
+  const [hasMounted, setHasMounted] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
@@ -24,6 +24,10 @@ export default function Home() {
   const [statusOk, setStatusOk] = useState<boolean | null>(null);
   const [showConfig, setShowConfig] = useState(true);
   const [syncPhase, setSyncPhase] = useState<'idle' | 'syncing' | 'done'>('idle');
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const getInitialDate = () => {
     const d = new Date();
@@ -49,7 +53,15 @@ export default function Home() {
       filteredUsers.forEach(u => newMap[u.id] = []);
       (data.records || []).forEach((c: any) => {
         const extId = parseInt(c.extension.id);
-        if (newMap[extId] !== undefined) newMap[extId].push(c);
+        if (newMap[extId] === undefined) return;
+        if (c.result === 'Missed') {
+          newMap[extId].push(c);
+          return;
+        }
+        if ((c.result === 'Accepted' || c.result === 'Call connected') && c.duration >= 20) {
+          newMap[extId].push(c);
+          return;
+        }
       });
       setAllCalls(newMap);
     } catch (e) {
@@ -67,7 +79,6 @@ export default function Home() {
     setStatusOk(null);
 
     try {
-      // Step 1: Get token
       setLoadingMsg('Connecting...');
       const tokenRes = await fetch('/api/token', {
         method: 'POST',
@@ -83,7 +94,6 @@ export default function Home() {
       const token = tokenData.access_token;
       setStatusOk(true);
 
-      // Step 2: Get users
       setLoadingMsg('Loading users...');
       let allFoundUsers: RCUser[] = [];
       let nextUrl = '/api/rc/v1.0/account/~/extension?type=User&status=Enabled&perPage=100&page=1';
@@ -100,26 +110,24 @@ export default function Home() {
       setUsers(filteredUsers);
       if (filteredUsers.length > 0) setSelectedUser(filteredUsers[0]);
 
-      // Step 3: Check if we already have cached data in SQLite
       const ids = filteredUsers.map(u => u.id).join(',');
       const cachedRes = await fetch(`/api/calls?range=all&extensionIds=${ids}`);
       const cachedData = await cachedRes.json();
       const hasCachedData = (cachedData.records || []).length > 0;
 
       if (hasCachedData) {
-        // Serve from DB instantly
         await loadCallsFromDb(filteredUsers);
         setShowConfig(false);
+        setActiveView('overview');
         setIsLoading(false);
         setSyncPhase('done');
       } else {
-        // Show dashboard empty, then start sync
         setShowConfig(false);
+        setActiveView('overview');
         setIsLoading(false);
         setSyncPhase('syncing');
       }
 
-      // Step 4: Background sync via account-level endpoint (only 5 requests total!)
       const extensionIds = filteredUsers.map(u => u.id);
       const syncRes = await fetch('/api/sync', {
         method: 'POST',
@@ -128,7 +136,6 @@ export default function Home() {
       });
 
       if (syncRes.ok) {
-        // Reload from DB after sync
         await loadCallsFromDb(filteredUsers);
         setSyncPhase('done');
       }
@@ -141,6 +148,10 @@ export default function Home() {
   };
 
   const status = error ? 'error' : statusOk ? 'connected' : 'idle';
+
+  if (!hasMounted) {
+    return null;
+  }
 
   const handleSelectUser = (user: RCUser) => {
     setSelectedUser(user);
@@ -177,6 +188,8 @@ export default function Home() {
               allCalls={allCalls}
               selectedUser={selectedUser}
               onSelect={handleSelectUser}
+              activeView={activeView}
+              onSelectDashboard={() => setActiveView('overview')}
             />
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <StatsRow users={users} allCalls={allCalls} />

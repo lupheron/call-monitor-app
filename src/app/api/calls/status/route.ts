@@ -10,8 +10,6 @@ export async function POST(request: Request) {
     }
 
     const statusObj = getSyncStatus();
-    
-    // Only initialize if we are idle and have no completed ranges
     if (statusObj.status === 'idle' && statusObj.completedRanges.length === 0) {
       initializeSync({ clientId, clientSecret, jwt });
     }

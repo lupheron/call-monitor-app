@@ -3,7 +3,6 @@ import Database from 'better-sqlite3';
 const db = new Database('calls.db', { verbose: console.log });
 db.pragma('journal_mode = WAL');
 
-// Initialize schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS calls (
     id TEXT PRIMARY KEY,

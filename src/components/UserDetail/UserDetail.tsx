@@ -6,6 +6,7 @@ import { getInitials, getColor } from '@/utils/helpers';
 import { useState, useMemo } from 'react';
 import MiniCharts from '../MiniCharts/MiniCharts';
 import CallTable from '../CallTable/CallTable';
+import { useGlobalContext } from '@/components/GlobalContext';
 
 export default function UserDetail({
   user,
@@ -19,11 +20,14 @@ export default function UserDetail({
   syncPhase: 'idle' | 'syncing' | 'done';
 }) {
   const [activeFilter, setActiveFilter] = useState<'All' | 'Outbound' | 'Inbound' | 'Missed'>('All');
-  // Default to the broadest window so you always see the
-  // latest history (up to 500 calls per user from the DB).
-  const [timeRange, setTimeRange] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Yearly' | 'Custom'>('Yearly');
-  const [customDateFrom, setCustomDateFrom] = useState('');
-  const [customDateTo, setCustomDateTo] = useState('');
+  const { globalDateFilter } = useGlobalContext();
+  const timeRange = globalDateFilter.preset === 'today' ? 'Daily'
+    : globalDateFilter.preset === 'week' ? 'Weekly'
+    : globalDateFilter.preset === 'month' ? 'Monthly'
+    : globalDateFilter.preset === 'custom' ? 'Custom'
+    : 'Yearly';
+  const customDateFrom = globalDateFilter.preset === 'custom' ? globalDateFilter.from : '';
+  const customDateTo = globalDateFilter.preset === 'custom' ? globalDateFilter.to : '';
 
   const historyReady = syncPhase === 'done';
 
@@ -67,10 +71,6 @@ export default function UserDetail({
     if (newFilter !== null) setActiveFilter(newFilter);
   };
 
-  const handleTimeRangeChange = (event: React.MouseEvent<HTMLElement>, newRange: typeof timeRange) => {
-    if (newRange !== null) setTimeRange(newRange);
-  };
-
   const phoneNumbersString = user.phoneNumbers
       ? user.phoneNumbers.map(n => n.phoneNumber).filter(Boolean).join(', ')
       : 'No direct number';
@@ -100,56 +100,6 @@ export default function UserDetail({
         </Box>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-            <ToggleButtonGroup
-            value={timeRange}
-            exclusive
-            onChange={handleTimeRangeChange}
-            color="primary"
-            size="small"
-            sx={{
-                backgroundColor: 'var(--surface2)',
-                '& .MuiToggleButton-root': {
-                color: 'var(--text2)',
-                border: '1px solid var(--border)',
-                borderColor: 'var(--border2)',
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.75rem',
-                px: 2,
-                py: 0.5,
-                '&.Mui-selected': {
-                    color: '#fff',
-                    backgroundColor: 'var(--surface3)'
-                }
-                }
-            }}
-            >
-            <ToggleButton value="Daily">Daily</ToggleButton>
-            <ToggleButton value="Weekly" disabled={!historyReady}>Weekly {!historyReady ? '⏳' : ''}</ToggleButton>
-            <ToggleButton value="Monthly" disabled={!historyReady}>Monthly {!historyReady ? '⏳' : ''}</ToggleButton>
-            <ToggleButton value="Yearly" disabled={!historyReady}>Yearly {!historyReady ? '⏳' : ''}</ToggleButton>
-            <ToggleButton value="Custom" disabled={!historyReady}>Custom {!historyReady ? '⏳' : ''}</ToggleButton>
-            </ToggleButtonGroup>
-
-            {timeRange === 'Custom' && (
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField
-                  type="date"
-                  size="small"
-                  value={customDateFrom}
-                  onChange={(e) => setCustomDateFrom(e.target.value)}
-                  sx={{ width: 140, '& .MuiOutlinedInput-root': { height: 32, fontSize: '0.75rem' }, input: { color: 'var(--text)' }, '& fieldset': { borderColor: 'var(--border2)' } }}
-                />
-                <TextField
-                  type="date"
-                  size="small"
-                  value={customDateTo}
-                  onChange={(e) => setCustomDateTo(e.target.value)}
-                  sx={{ width: 140, '& .MuiOutlinedInput-root': { height: 32, fontSize: '0.75rem' }, input: { color: 'var(--text)' }, '& fieldset': { borderColor: 'var(--border2)' } }}
-                />
-              </Box>
-            )}
-
             <ToggleButtonGroup
           value={activeFilter}
           exclusive

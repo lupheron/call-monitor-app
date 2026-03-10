@@ -15,6 +15,8 @@ import { RCUser, UserCalls, CallRecord } from '@/types';
 import { fmtDuration } from '@/utils/helpers';
 import { useMemo, useState } from 'react';
 import { color } from 'chart.js/helpers';
+import { useGlobalContext } from '@/components/GlobalContext';
+import WaitingDashboard from './WaitingDashboard';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -27,7 +29,13 @@ export default function DashboardOverview({
   users: RCUser[];
   allCalls: UserCalls;
 }) {
-  const [timeRange, setTimeRange] = useState<TimeRange>('Daily');
+  const { globalDateFilter, setGlobalDateFilter } = useGlobalContext();
+  const timeRange: TimeRange =
+    globalDateFilter.preset === 'today' ? 'Daily'
+      : globalDateFilter.preset === 'week' ? 'Weekly'
+        : globalDateFilter.preset === 'month' ? 'Monthly'
+          : globalDateFilter.preset === 'custom' ? 'Custom'
+            : 'Yearly';
 
   const filteredByUser = useMemo(() => {
     const now = new Date();
@@ -42,7 +50,6 @@ export default function DashboardOverview({
     } else if (timeRange === 'Yearly') {
       cutoff.setFullYear(now.getFullYear() - 1);
     } else {
-      // Custom is not wired yet; fall back to yearly window for now.
       cutoff.setFullYear(now.getFullYear() - 1);
     }
 
@@ -162,7 +169,16 @@ export default function DashboardOverview({
         <ToggleButtonGroup
           value={timeRange}
           exclusive
-          onChange={(_, v) => v && setTimeRange(v)}
+          onChange={(_, v) => {
+            if (!v) return;
+            const preset = v === 'Daily' ? 'today' : v === 'Weekly' ? 'week' : v === 'Monthly' ? 'month' : v === 'Custom' ? 'custom' : 'month';
+            const from = new Date();
+            if (v === 'Daily') from.setDate(from.getDate() - 1);
+            else if (v === 'Weekly') from.setDate(from.getDate() - 7);
+            else if (v === 'Monthly') from.setMonth(from.getMonth() - 1);
+            else from.setFullYear(from.getFullYear() - 1);
+            setGlobalDateFilter({ preset, from: from.toISOString().split('T')[0], to: new Date().toISOString().split('T')[0] });
+          }}
           size="small"
           sx={{
             backgroundColor: 'var(--surface2)',
@@ -278,27 +294,29 @@ export default function DashboardOverview({
           options={{
             responsive: true,
             plugins: {
-                legend: { labels: { color: '#ffffff' } },
-                tooltip: {
-                  bodyColor: '#ffffff',
-                  titleColor: '#ffffff',
-                },
+              legend: { labels: { color: '#ffffff' } },
+              tooltip: {
+                bodyColor: '#ffffff',
+                titleColor: '#ffffff',
+              },
             },
             scales: {
               x: {
                 stacked: true,
-                  ticks: { color: '#ffffff' },
+                ticks: { color: '#ffffff' },
                 grid: { color: 'var(--border2)' },
               },
               y: {
                 stacked: true,
-                  ticks: { color: '#ffffff' },
+                ticks: { color: '#ffffff' },
                 grid: { color: 'var(--border2)' },
               },
             },
           }}
         />
       </Box>
+
+      <WaitingDashboard />
     </Box>
   );
 }

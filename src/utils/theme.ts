@@ -9,19 +9,19 @@ export const theme = createTheme({
       paper: '#0e1118',
     },
     primary: {
-      main: '#00d9f5', // cyan
+      main: '#00d9f5',
     },
     error: {
-      main: '#ff4566', // red
+      main: '#ff4566',
     },
     success: {
-      main: '#00e09a', // green
+      main: '#00e09a',
     },
     warning: {
-      main: '#ffcc44', // yellow
+      main: '#ffcc44',
     },
     secondary: {
-      main: '#9b7dff' // purple
+      main: '#9b7dff'
     },
   },
   typography: {
@@ -52,7 +52,7 @@ export const theme = createTheme({
           color: var(--text);
           margin: 0;
           padding: 0;
-          overflow: hidden; /* App wrapper manages scroll */
+          overflow: hidden;
           height: 100vh;
         }
 
@@ -60,7 +60,6 @@ export const theme = createTheme({
           box-sizing: border-box;
         }
 
-        /* Custom scrollbar */
         ::-webkit-scrollbar {
           width: 4px;
           height: 4px;
@@ -76,7 +75,6 @@ export const theme = createTheme({
           background: var(--text3);
         }
 
-        /* Scanline Overlay (handled in Layout but can be pseudo here too) */
         body::after {
           content: " ";
           display: block;

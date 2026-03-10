@@ -5,13 +5,19 @@ import { fmtDate } from '@/utils/helpers';
 import { useEffect, useState } from 'react';
 
 export default function Header({ status }: { status: 'idle' | 'connected' | 'error' }) {
-  const [time, setTime] = useState<string>('');
+  const [time, setTime] = useState<string | null>(null);
 
   useEffect(() => {
-    setTime(fmtDate(new Date().toISOString()));
-    const interval = setInterval(() => {
-        setTime(fmtDate(new Date().toISOString()));
-    }, 60000);
+    const fmt = () => new Date().toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    setTime(fmt());
+    const interval = setInterval(() => setTime(fmt()), 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -24,11 +30,11 @@ export default function Header({ status }: { status: 'idle' | 'connected' | 'err
   };
 
   return (
-    <AppBar 
-      position="sticky" 
-      sx={{ 
-        height: 56, 
-        backgroundColor: 'rgba(14, 17, 24, 0.8)', 
+    <AppBar
+      position="sticky"
+      sx={{
+        height: 56,
+        backgroundColor: 'rgba(14, 17, 24, 0.8)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid var(--border)',
         boxShadow: 'none',
@@ -38,59 +44,58 @@ export default function Header({ status }: { status: 'idle' | 'connected' | 'err
     >
       <Toolbar sx={{ minHeight: '56px !important', height: 56, px: 3, justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {/* Logo Box */}
-          <Box sx={{ 
-            width: 32, height: 32, 
-            borderRadius: 1.5, 
-            border: '1px solid var(--border)', 
-            display: 'flex', 
-            alignItems: 'center', 
+          <Box sx={{
+            width: 32, height: 32,
+            borderRadius: 1.5,
+            border: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: 'var(--surface2)'
           }}>
-            <Box sx={{ 
-              width: 8, height: 8, 
-              borderRadius: '50%', 
+            <Box sx={{
+              width: 8, height: 8,
+              borderRadius: '50%',
               backgroundColor: getStatusColor(),
               animation: status === 'connected' ? 'breathe 2s infinite ease-in-out' : 'none',
               transition: 'background-color 0.3s'
             }} />
           </Box>
-          
+
           <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.2rem', letterSpacing: '-0.5px' }}>
             Call<Box component="span" sx={{ color: 'var(--accent)' }}>Monitor</Box>
           </Typography>
 
           <Box sx={{ height: 20, width: '1px', backgroundColor: 'var(--border2)' }} />
 
-          <Chip 
-            label="RingCentral" 
-            size="small" 
-            sx={{ 
-                height: 24, 
-                backgroundColor: 'var(--surface3)', 
-                color: 'var(--text2)', 
-                fontSize: '0.75rem',
-                fontWeight: 600
-            }} 
+          <Chip
+            label="RingCentral"
+            size="small"
+            sx={{
+              height: 24,
+              backgroundColor: 'var(--surface3)',
+              color: 'var(--text2)',
+              fontSize: '0.75rem',
+              fontWeight: 600
+            }}
           />
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ 
-                width: 6, height: 6, 
-                borderRadius: '50%', 
-                backgroundColor: 'var(--green)',
-                animation: 'breathe 2s infinite ease-in-out'
+            <Box sx={{
+              width: 6, height: 6,
+              borderRadius: '50%',
+              backgroundColor: 'var(--green)',
+              animation: 'breathe 2s infinite ease-in-out'
             }} />
             <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--green)', letterSpacing: '1px' }}>
               LIVE
             </Typography>
           </Box>
-          
+
           <Typography sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text2)' }}>
-            {time}
+            {time ?? ''}
           </Typography>
         </Box>
       </Toolbar>

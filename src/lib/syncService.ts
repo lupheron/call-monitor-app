@@ -13,7 +13,6 @@ type SyncJob = {
   rangeName: string;
 };
 
-// Global state for Next.js hot-reloading
 const globalAny = global as any;
 
 if (!globalAny.syncState) {
@@ -43,14 +42,10 @@ export function getSyncStatus() {
 
 export function initializeSync(credentials: Credentials) {
   state.credentials = credentials;
-  
-  // Clear queue and start fresh when re-initialized
   state.queue = [];
   state.completedRanges = [];
   
   const now = new Date();
-  
-  // 1. Initial job: Today's calls
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
   
@@ -61,7 +56,6 @@ export function initializeSync(credentials: Credentials) {
     rangeName: 'today'
   });
 
-  // 2. Last 7 days
   const sevenDays = new Date(now);
   sevenDays.setDate(sevenDays.getDate() - 7);
   state.queue.push({
@@ -71,7 +65,6 @@ export function initializeSync(credentials: Credentials) {
     rangeName: 'weekly'
   });
 
-  // 3. Last 30 days
   const thirtyDays = new Date(now);
   thirtyDays.setDate(thirtyDays.getDate() - 30);
   state.queue.push({
@@ -81,7 +74,6 @@ export function initializeSync(credentials: Credentials) {
     rangeName: 'monthly'
   });
 
-  // 4. Last year
   const oneYear = new Date(now);
   oneYear.setFullYear(oneYear.getFullYear() - 1);
   state.queue.push({
@@ -167,7 +159,6 @@ async function processQueue() {
     `);
 
     while (hasMorePages) {
-      // Enforce 1200ms delay between requests
       const timeSinceLast = Date.now() - state.lastRequestTime;
       if (timeSinceLast < DELAY_BETWEEN_REQUESTS) {
         await new Promise(r => setTimeout(r, DELAY_BETWEEN_REQUESTS - timeSinceLast));
@@ -184,18 +175,17 @@ async function processQueue() {
         consecutive429s++;
         const retryAfter = res.headers.get('retry-after') || res.headers.get('x-rate-limit-window');
         let waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseRetryDelay * Math.pow(2, consecutive429s - 1);
-        
         console.log(`[Queue] 429 Rate Limit hit. Waiting ${waitTime/1000}s...`);
         await new Promise(r => setTimeout(r, waitTime));
-        continue; // Retry the exact same page
+        continue;
       }
 
-      consecutive429s = 0; // reset on success
+      consecutive429s = 0;
 
-      if (res.status === 401) { // Token expired
+      if (res.status === 401) {
         state.token = null;
-        await getAccessToken(); 
-        continue; // Retry with new token
+        await getAccessToken();
+        continue;
       }
 
       if (!res.ok) {
@@ -205,8 +195,6 @@ async function processQueue() {
 
       const data = await res.json();
       const records = data.records || [];
-
-      // Start transaction for fast insertion
       const transaction = db.transaction((calls: any[]) => {
         for (const call of calls) {
           const fromNum = call.from?.phoneNumber || call.from?.extensionNumber || '';
@@ -237,14 +225,11 @@ async function processQueue() {
       }
     }
 
-    // Job finished successfully
     state.completedRanges.push(job.rangeName);
 
   } catch (err) {
     console.error(`[Queue] Job failed:`, err);
-    // Depending on error, we might push the job back or skip. We are skipping for safety on total failure.
   }
 
-  // Process next job
   setTimeout(processQueue, 0);
 }

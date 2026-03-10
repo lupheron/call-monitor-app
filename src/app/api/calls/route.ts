@@ -30,7 +30,6 @@ export async function GET(request: Request) {
     if (from) cutoff = new Date(from);
   }
 
-  // Build placeholders for IN clause and normalize extension IDs (strip any trailing ".0")
   const normalizeExtId = (id: string) => id.replace(/\.0$/, '');
   const normalizedIds = extensionIds.map(normalizeExtId);
   const placeholders = normalizedIds.map(() => '?').join(',');
@@ -46,7 +45,6 @@ export async function GET(request: Request) {
     ).all(...normalizedIds);
   }
 
-  // Enforce a hard cap of last 500 calls per user/extension
   const MAX_PER_EXTENSION = 500;
   const perExtensionCount: Record<string, number> = {};
 

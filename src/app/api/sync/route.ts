@@ -2,12 +2,8 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 
 const RC_BASE = 'https://platform.ringcentral.com/restapi';
-
-// Be conservative with rate limits: at most ~1 request / 1.2s
 const DELAY_BETWEEN_REQUESTS_MS = 1200;
-// Safety cap so we never loop forever even on very busy accounts
 const MAX_PAGES = 200;
-// Target number of calls we want per extension
 const TARGET_PER_EXTENSION = 500;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -26,9 +22,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: 'already_running' });
   }
 
-  // Convert all IDs to normalized strings for type-safe comparison
-  // RingCentral sometimes returns extension IDs like "1080964035.0".
-  // We strip any trailing ".0" so that both sides match.
   const normalizeExtId = (id: string | number) => String(id).replace(/\.0$/, '');
   const extIdStrings = extensionIds.map(normalizeExtId);
 
@@ -44,7 +37,6 @@ export async function POST(request: Request) {
   const perExtensionInserted: Record<string, number> = {};
   const lastRequestTime = { value: 0 };
 
-  // Helper to enforce delay between requests
   const doFetchWithDelay = async (url: string, headers: HeadersInit) => {
     const now = Date.now();
     const elapsed = now - lastRequestTime.value;
@@ -63,15 +55,12 @@ export async function POST(request: Request) {
     const dateTo = now.toISOString();
 
     const baseRetryDelayMs = 60_000;
-
-    // Loop sequentially over each extension and fetch its own call-log.
     for (const extId of extIdStrings) {
       let page = 1;
       let hasMore = true;
       let consecutive429s = 0;
 
       while (hasMore && page <= MAX_PAGES) {
-        // Use RC API directly — this runs server-side, so absolute URL is required
         const url = `${RC_BASE}/v1.0/account/~/extension/${encodeURIComponent(
           extId
         )}/call-log?view=Detailed&type=Voice&perPage=100&page=${page}&dateFrom=${encodeURIComponent(
@@ -79,8 +68,6 @@ export async function POST(request: Request) {
         )}&dateTo=${encodeURIComponent(dateTo)}`;
 
         let res = await doFetchWithDelay(url, { Authorization: `Bearer ${token}` });
-
-        // Robust 429 handling with exponential backoff
         if (res.status === 429) {
           consecutive429s += 1;
 
@@ -97,7 +84,6 @@ export async function POST(request: Request) {
           );
 
           await sleep(waitMs);
-          // Retry the same page for this extension
           res = await doFetchWithDelay(url, { Authorization: `Bearer ${token}` });
         } else {
           consecutive429s = 0;
@@ -140,8 +126,6 @@ export async function POST(request: Request) {
         });
 
         txn(records);
-
-        // Stop paginating this extension once we hit the per-extension cap
         if ((perExtensionInserted[extId] || 0) >= TARGET_PER_EXTENSION) {
           hasMore = false;
         } else {
@@ -150,8 +134,6 @@ export async function POST(request: Request) {
 
         page++;
       }
-
-      // Give RingCentral a short breathing window before moving to next extension
       await sleep(2000);
     }
   } finally {

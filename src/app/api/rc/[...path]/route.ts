@@ -13,7 +13,6 @@ export async function GET(
       return NextResponse.json({ error: 'Missing x-rc-auth header' }, { status: 401 });
     }
 
-    // Forward original search/query params
     const { search } = new URL(request.url);
     const targetUrl = `https://platform.ringcentral.com/restapi/${pathString}${search}`;
 

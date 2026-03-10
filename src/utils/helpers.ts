@@ -15,7 +15,6 @@ export function fmtDuration(sec: number): string {
   
 export function fmtDate(dateStr: string): string {
     const date = new Date(dateStr);
-    // Use a fixed timezone so SSR and client render the same HTML
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',

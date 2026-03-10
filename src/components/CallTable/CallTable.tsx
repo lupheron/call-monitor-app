@@ -16,7 +16,7 @@ export default function CallTable({ calls, maxDuration }: { calls: CallRecord[],
   }
 
   return (
-    <Box sx={{ backgroundColor: 'var(--surface)', borderRadius: 3, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+    <Box sx={{ backgroundColor: 'var(--surface)', borderRadius: 3, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, height: '500px', minHeight: '500px' }}>
       <Box sx={{ p: 3, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
         <Typography sx={{ fontWeight: 700 }}>Call History</Typography>
         <Typography sx={{ color: 'var(--text2)', fontSize: '0.85rem' }}>{calls.length} records</Typography>
