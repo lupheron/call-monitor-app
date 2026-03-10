@@ -12,7 +12,7 @@ import { RCUser, UserCalls } from '@/types';
 import { useGlobalContext } from '@/components/GlobalContext';
 import { useRouter } from 'next/navigation';
 
-const WHITELIST = ['Alex Chester', 'Charles White', 'Ethan Parker', 'Tony Royce'];
+const WHITELIST = ['Charles White', 'Ethan Parker', 'Tony Royce'];
 
 export default function Home() {
     const { users, setUsers, allCalls, setAllCalls, selectedUser, setSelectedUser, globalDateFilter, setGlobalDateFilter } = useGlobalContext();
