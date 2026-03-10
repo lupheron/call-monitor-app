@@ -1,11 +1,16 @@
 'use client';
 
-import { AppBar, Toolbar, Box, Typography, Chip } from '@mui/material';
+import { AppBar, Toolbar, Box, Typography, Chip, Button } from '@mui/material';
 import { fmtDate } from '@/utils/helpers';
 import { useEffect, useState } from 'react';
 
 export default function Header({ status }: { status: 'idle' | 'connected' | 'error' }) {
   const [time, setTime] = useState<string | null>(null);
+
+  const handleLogout = () => {
+    localStorage.removeItem('rc_credentials');
+    window.location.reload();
+  };
 
   useEffect(() => {
     const fmt = () => new Date().toLocaleString('en-US', {
@@ -97,6 +102,20 @@ export default function Header({ status }: { status: 'idle' | 'connected' | 'err
           <Typography sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text2)' }}>
             {time ?? ''}
           </Typography>
+
+          <Button
+            size="small"
+            onClick={handleLogout}
+            sx={{
+              color: 'var(--text3)',
+              fontSize: '0.7rem',
+              textTransform: 'none',
+              fontWeight: 600,
+              '&:hover': { color: 'var(--red)' }
+            }}
+          >
+            Logout
+          </Button>
         </Box>
       </Toolbar>
     </AppBar>
