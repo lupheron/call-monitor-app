@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 
   try {
     let rows: any[];
-    
+
     if (cutoff) {
       const query = `
         SELECT * FROM calls 
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
         AND start_time >= $2
         ORDER BY start_time DESC
       `;
-      const result = await db.prepare(query).all(normalizedIds, cutoff.toISOString());
+      const result = await db.prepare(query).all([normalizedIds, cutoff.toISOString()]);
       rows = result;
     } else {
       const query = `
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
         WHERE REPLACE(user_extension, '.0', '') = ANY($1::text[])
         ORDER BY start_time DESC
       `;
-      const result = await db.prepare(query).all(normalizedIds);
+      const result = await db.prepare(query).all([normalizedIds]);
       rows = result;
     }
 

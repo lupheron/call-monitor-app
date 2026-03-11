@@ -32,27 +32,27 @@ initializeDatabase().catch(console.error);
 
 export const db = {
   prepare: (text: string) => ({
-    run: async (...values: any[]) => {
+    run: async (values: any[] = []) => {
       try {
-        return await sql.unsafe(text, values as any);
+        return await sql.query(text, values);
       } catch (error) {
         console.error('[db.run] SQL Error:', error);
         throw error;
       }
     },
-    all: async (...values: any[]) => {
+    all: async (values: any[] = []) => {
       try {
-        const result = await sql.unsafe(text, values as any);
-        return Array.from(result) || [];
+        const result = await sql.query(text, values);
+        return Array.isArray(result) ? result : Array.from(result as Iterable<unknown>) || [];
       } catch (error) {
         console.error('[db.all] SQL Error:', error);
         throw error;
       }
     },
-    get: async (...values: any[]) => {
+    get: async (values: any[] = []) => {
       try {
-        const result = await sql.unsafe(text, values as any);
-        const rows = Array.from(result);
+        const result = await sql.query(text, values);
+        const rows = Array.isArray(result) ? result : Array.from(result as Iterable<unknown>);
         return rows[0] || null;
       } catch (error) {
         console.error('[db.get] SQL Error:', error);

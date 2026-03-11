@@ -107,7 +107,7 @@ export async function POST(request: Request) {
               (id, call_id, from_number, to_number, direction, result, user_extension, start_time, duration, recording_url)
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
               ON CONFLICT (call_id) DO NOTHING
-            `).run(
+            `).run([
               `${c.id}-${c.sessionId}`,
               c.id,
               from,
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
               c.startTime,
               c.duration,
               c.recording?.contentUri || ''
-            );
+            ]);
 
             perExtensionInserted[extId] = (perExtensionInserted[extId] || 0) + 1;
             totalInserted += 1;

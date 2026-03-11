@@ -202,7 +202,7 @@ async function processQueue() {
               VALUES 
               ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
               ON CONFLICT (call_id) DO NOTHING
-            `).run(
+            `).run([
             `${call.id}-${call.sessionId}`,
             call.id,
             fromNum,
@@ -213,7 +213,7 @@ async function processQueue() {
             call.startTime,
             call.duration,
             call.recording?.contentUri || ''
-          );
+          ]);
         } catch (err) {
           console.error('[Queue] Failed to insert call:', err);
         }
