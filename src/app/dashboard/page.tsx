@@ -13,6 +13,8 @@ import { useGlobalContext } from '@/components/GlobalContext';
 import { useRouter } from 'next/navigation';
 
 const WHITELIST = ['Charles White', 'Ethan Parker', 'Tony Royce'];
+const WHITELIST2 = ['Winston Smith', 'Alex Chester', 'Henry Safety Department', 'Michael Cole'];
+const ALL_WHITELIST = [...WHITELIST, ...WHITELIST2];
 
 export default function Home() {
     const { users, setUsers, allCalls, setAllCalls, selectedUser, setSelectedUser, globalDateFilter, setGlobalDateFilter } = useGlobalContext();
@@ -83,29 +85,40 @@ export default function Home() {
             setStatusOk(true);
             setIsCheckingAuth(false);
 
-            let allFoundUsers: RCUser[] = [];
+            // Fetch users from account 1
+            let account1Users: RCUser[] = [];
             let nextUrl = '/api/rc/v1.0/account/~/extension?type=User&status=Enabled&perPage=100&page=1';
             while (nextUrl) {
                 const usersRes = await fetch(nextUrl, { headers: { 'x-rc-auth': token } });
                 const usersData = await usersRes.json();
                 if (!usersRes.ok) throw new Error(usersData.error || 'Failed to load users');
-                allFoundUsers = [...allFoundUsers, ...usersData.records];
+                account1Users = [...account1Users, ...usersData.records];
                 nextUrl = usersData.navigation?.nextPage
                     ? usersData.navigation.nextPage.uri.replace('https://platform.ringcentral.com/restapi', '/api/rc')
                     : '';
             }
 
-            const filteredUsers = allFoundUsers.filter(u => WHITELIST.includes(u.name));
-            setUsers(filteredUsers);
-            if (filteredUsers.length > 0) setSelectedUser(filteredUsers[0]);
+            const filteredAccount1 = account1Users.filter(u => WHITELIST.includes(u.name));
 
-            const ids = filteredUsers.map(u => u.id).join(',');
+            // Fetch users from account 2 via server
+            const acc2Res = await fetch('/api/account2/users');
+            let filteredAccount2: RCUser[] = [];
+            if (acc2Res.ok) {
+                const acc2Data = await acc2Res.json();
+                filteredAccount2 = (acc2Data.users || []).filter((u: RCUser) => WHITELIST2.includes(u.name));
+            }
+
+            const allFilteredUsers = [...filteredAccount1, ...filteredAccount2];
+            setUsers(allFilteredUsers);
+            if (allFilteredUsers.length > 0) setSelectedUser(allFilteredUsers[0]);
+
+            const ids = allFilteredUsers.map(u => u.id).join(',');
             const cachedRes = await fetch(`/api/calls?range=all&extensionIds=${ids}`);
             const cachedData = await cachedRes.json();
             const hasCachedData = (cachedData.records || []).length > 0;
 
             if (hasCachedData) {
-                await loadCallsFromDb(filteredUsers);
+                await loadCallsFromDb(allFilteredUsers);
                 setShowConfig(false);
                 setActiveView('overview');
                 setIsLoading(false);
@@ -118,14 +131,13 @@ export default function Home() {
                 setSyncPhase('syncing');
             }
 
-            // Save credentials to localStorage on successful login
             localStorage.setItem('rc_credentials', JSON.stringify({
                 clientId: creds.clientId,
                 clientSecret: creds.clientSecret,
                 jwt: creds.jwt
             }));
 
-            const extensionIds = filteredUsers.map(u => u.id);
+            const extensionIds = filteredAccount1.map(u => u.id);
             const syncRes = await fetch('/api/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -133,7 +145,7 @@ export default function Home() {
             });
 
             if (syncRes.ok) {
-                await loadCallsFromDb(filteredUsers);
+                await loadCallsFromDb(allFilteredUsers);
                 setSyncPhase('done');
             }
 
@@ -144,7 +156,6 @@ export default function Home() {
             setError(err.message || 'An unexpected error occurred');
             setStatusOk(false);
             setIsLoading(false);
-            // Only remove credentials if it's an auth error, not a network error
             if (err.message?.includes('Authentication failed') || err.message?.includes('Unparseable')) {
                 localStorage.removeItem('rc_credentials');
             }
@@ -152,7 +163,6 @@ export default function Home() {
         }
     }, [credentials, loadCallsFromDb, setUsers, setSelectedUser, setAllCalls]);
 
-    // Auto-login on mount if credentials are saved
     useEffect(() => {
         setHasMounted(true);
         const saved = localStorage.getItem('rc_credentials');
@@ -269,6 +279,7 @@ export default function Home() {
                             ) : selectedUser ? (
                                 <UserDetail
                                     user={selectedUser}
+                                    users={users}
                                     calls={allCalls[selectedUser.id] || []}
                                     userIndex={users.findIndex(u => u.id === selectedUser.id)}
                                     syncPhase={syncPhase}

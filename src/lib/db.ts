@@ -21,6 +21,10 @@ async function initializeDatabase() {
     `;
     await sql`CREATE INDEX IF NOT EXISTS idx_start_time ON calls (start_time)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_user_extension ON calls (user_extension)`;
+    
+    // Add account column if it doesn't exist
+    await sql`ALTER TABLE calls ADD COLUMN IF NOT EXISTS account TEXT DEFAULT 'account1'`;
+    
   } catch (error: any) {
     if (!error.message?.includes('already exists')) {
       console.error('Failed to initialize database:', error);

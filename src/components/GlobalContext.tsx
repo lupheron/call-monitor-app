@@ -73,7 +73,8 @@ export function useGlobalContext() {
   return context;
 }
 
-const WHITELIST = ['Charles White', 'Ethan Parker', 'Tony Royce'];
+const WHITELIST1 = ['Charles White', 'Ethan Parker', 'Tony Royce'];
+const WHITELIST2 = ['Winston Smith', 'Alex Chester', 'Henry Safety Department', 'Michael Cole'];
 
 async function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));
@@ -146,16 +147,26 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       if (!tokenRes.ok) throw new Error(tokenData.error || 'Auth failed');
       const token = tokenData.access_token;
 
-      setWaitingFetchState(prev => ({ ...prev, progress: 'Fetching users...' }));
+      setWaitingFetchState(prev => ({ ...prev, progress: 'Fetching users from both accounts...' }));
       await sleep(1200);
 
-      const usersRes = await fetch(
+      // Account 1 users
+      const usersRes1 = await fetch(
         '/api/rc/v1.0/account/~/extension?type=User&status=Enabled&perPage=100&page=1',
         { headers: { 'x-rc-auth': token } }
       );
-      const usersData = await usersRes.json();
-      const allUsers = usersData.records || [];
-      const targetUsers = allUsers.filter((u: any) => WHITELIST.includes(u.name));
+      const usersData1 = await usersRes1.json();
+      const account1Users = (usersData1.records || []).filter((u: any) => WHITELIST1.includes(u.name));
+
+      // Account 2 users
+      const usersRes2 = await fetch('/api/account2/users');
+      const usersData2 = await usersRes2.json();
+      const account2Users = (usersData2.users || []).filter((u: any) => WHITELIST2.includes(u.name));
+
+      const targetUsers = [
+        ...account1Users.map((u: any) => ({ ...u, _account: 'account1' as const })),
+        ...account2Users.map((u: any) => ({ ...u, _account: 'account2' as const })),
+      ];
 
       const dateFrom = fromDate.toISOString().split('T')[0];
       const dateTo = toDate.toISOString().split('T')[0];
@@ -174,8 +185,21 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         let hasMore = true;
 
         while (hasMore) {
-          const url = `/api/rc/v1.0/account/~/extension/${user.id}/call-log?view=Detailed&type=Voice&dateFrom=${dateFrom}&dateTo=${dateTo}&page=${page}&perPage=100`;
-          const data = await fetchWithRetry(url, { 'x-rc-auth': token });
+          let data: any;
+          if (user._account === 'account1') {
+            const url = `/api/rc/v1.0/account/~/extension/${user.id}/call-log?view=Detailed&type=Voice&dateFrom=${dateFrom}&dateTo=${dateTo}&page=${page}&perPage=100`;
+            data = await fetchWithRetry(url, { 'x-rc-auth': token });
+          } else {
+            await sleep(1200);
+            const url = `/api/account2/call-log?extensionId=${encodeURIComponent(user.id)}&dateFrom=${dateFrom}&dateTo=${dateTo}&page=${page}`;
+            const res = await fetch(url);
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.error || `Account 2 fetch failed for ${user.name}`);
+            }
+            data = await res.json();
+          }
+
           const records = data.records || [];
 
           records.forEach((call: any) => {

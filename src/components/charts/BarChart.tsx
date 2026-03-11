@@ -2,6 +2,7 @@
 
 import { Box, Typography } from '@mui/material';
 import { useGlobalContext } from '../GlobalContext';
+import { getDisplayName } from '@/utils/helpers';
 
 const avatarColors = ['#00d9f5', '#ff4566', '#9b7dff', '#00e09a', '#ffcc44', '#ff8c42', '#4db8ff', '#ff6b9d'];
 
@@ -84,7 +85,7 @@ export function CallVolumeByUserChart() {
       return callDate >= globalDateFilter.from && callDate <= globalDateFilter.to;
     });
     return {
-      label: user.name,
+      label: getDisplayName(user, users),
       value: filteredCalls.length,
       color: avatarColors[index % avatarColors.length],
     };

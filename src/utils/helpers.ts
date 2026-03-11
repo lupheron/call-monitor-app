@@ -47,3 +47,13 @@ export const COLORS = [
 export function getColor(index: number): string {
     return COLORS[index % COLORS.length];
 }
+
+/** Display name with extension when duplicate names exist across users */
+export function getDisplayName(user: { name: string; extensionNumber?: string; phoneNumbers?: { phoneNumber: string }[] }, allUsers: { name: string }[]): string {
+  const hasDuplicates = allUsers.filter(u => u.name === user.name).length > 1;
+  if (!hasDuplicates) return user.name;
+  const ext = user.extensionNumber;
+  const directNum = user.phoneNumbers?.find((p: any) => p.usageType === 'DirectNumber')?.phoneNumber;
+  const suffix = ext ? `Ext ${ext}` : directNum ? directNum.replace(/\D/g, '').slice(-4) : null;
+  return suffix ? `${user.name} (${suffix})` : user.name;
+}

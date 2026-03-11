@@ -2,7 +2,7 @@
 
 import { Box, Typography, Avatar, ToggleButtonGroup, ToggleButton, TextField } from '@mui/material';
 import { RCUser, CallRecord } from '@/types';
-import { getInitials, getColor } from '@/utils/helpers';
+import { getInitials, getColor, getDisplayName } from '@/utils/helpers';
 import { useState, useMemo } from 'react';
 import MiniCharts from '../MiniCharts/MiniCharts';
 import CallTable from '../CallTable/CallTable';
@@ -10,11 +10,13 @@ import { useGlobalContext } from '@/components/GlobalContext';
 
 export default function UserDetail({
   user,
+  users,
   calls,
   userIndex,
   syncPhase
 }: {
   user: RCUser;
+  users: RCUser[];
   calls: CallRecord[];
   userIndex: number;
   syncPhase: 'idle' | 'syncing' | 'done';
@@ -86,7 +88,7 @@ export default function UserDetail({
           </Avatar>
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 700, color: 'var(--text)', mb: 0.5 }}>
-              {user.name}
+              {getDisplayName(user, users)}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
               <Typography sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text2)' }}>

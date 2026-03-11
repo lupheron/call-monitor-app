@@ -2,7 +2,7 @@
 
 import { Box, Drawer, Typography, TextField, List, ListItemButton, Avatar, InputAdornment, Divider } from '@mui/material';
 import { RCUser, UserCalls, CallRecord } from '@/types';
-import { getInitials, getColor, fmtDuration } from '@/utils/helpers';
+import { getInitials, getColor, fmtDuration, getDisplayName } from '@/utils/helpers';
 import { useState, useMemo } from 'react';
 import SearchIcon from '@mui/icons-material/Search';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -153,7 +153,7 @@ export default function Sidebar({
 
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text)' }}>
-                    {user.name}
+                    {getDisplayName(user, users)}
                   </Typography>
                   <Typography noWrap sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text2)' }}>
                     {phoneNumbersString || 'No direct number'}

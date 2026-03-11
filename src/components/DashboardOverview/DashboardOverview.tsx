@@ -12,7 +12,7 @@ import {
   BarElement,
 } from 'chart.js';
 import { RCUser, UserCalls, CallRecord } from '@/types';
-import { fmtDuration } from '@/utils/helpers';
+import { fmtDuration, getDisplayName } from '@/utils/helpers';
 import { useMemo, useState } from 'react';
 import { useGlobalContext } from '@/components/GlobalContext';
 import WaitingDashboard from './WaitingDashboard';
@@ -65,7 +65,7 @@ export default function DashboardOverview({
         if (c.result === 'Missed') missed += 1;
         if (c.result === 'Call connected' || c.result === 'Accepted') connected += 1;
       });
-      return { id: u.id, name: u.name, callsCount: calls.length, duration, outbound, inbound, missed, connected };
+      return { id: u.id, name: getDisplayName(u, users), callsCount: calls.length, duration, outbound, inbound, missed, connected };
     });
   }, [users, filteredByUser]);
 

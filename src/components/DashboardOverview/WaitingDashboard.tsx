@@ -16,7 +16,7 @@ import { useGlobalContext } from '@/components/GlobalContext';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
-const USER_COLORS = ['#00d9f5', '#9b7dff', '#00e09a'];
+const USER_COLORS = ['#00d9f5', '#9b7dff', '#00e09a', '#ffcc44', '#ff8c42', '#4db8ff', '#ff6b9d'];
 
 function fmtDuration(sec: number): string {
     if (!sec || sec <= 0) return '0s';

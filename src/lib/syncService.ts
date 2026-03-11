@@ -4,6 +4,7 @@ type Credentials = {
   clientId: string;
   clientSecret: string;
   jwt: string;
+  account: string;
 };
 
 type SyncJob = {
@@ -11,6 +12,7 @@ type SyncJob = {
   dateFrom: string;
   dateTo: string;
   rangeName: string;
+  account: string;
 };
 
 const globalAny = global as any;
@@ -20,8 +22,8 @@ if (!globalAny.syncState) {
     isProcessing: false,
     queue: [] as SyncJob[],
     lastRequestTime: 0,
-    token: null as string | null,
-    credentials: null as Credentials | null,
+    tokens: {} as Record<string, string>,
+    credentialsMap: {} as Record<string, Credentials>,
     status: 'idle' as 'idle' | 'syncing' | 'ready',
     currentRange: '',
     completedRanges: [] as string[]
@@ -40,72 +42,62 @@ export function getSyncStatus() {
   };
 }
 
-export function initializeSync(credentials: Credentials) {
-  state.credentials = credentials;
-  state.queue = [];
-  state.completedRanges = [];
-
+function buildJobs(account: string): SyncJob[] {
   const now = new Date();
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
 
-  state.queue.push({
-    type: 'initial',
-    dateFrom: todayStart.toISOString(),
-    dateTo: now.toISOString(),
-    rangeName: 'today'
-  });
-
   const sevenDays = new Date(now);
   sevenDays.setDate(sevenDays.getDate() - 7);
-  state.queue.push({
-    type: 'historical',
-    dateFrom: sevenDays.toISOString(),
-    dateTo: todayStart.toISOString(),
-    rangeName: 'weekly'
-  });
 
   const thirtyDays = new Date(now);
   thirtyDays.setDate(thirtyDays.getDate() - 30);
-  state.queue.push({
-    type: 'historical',
-    dateFrom: thirtyDays.toISOString(),
-    dateTo: sevenDays.toISOString(),
-    rangeName: 'monthly'
-  });
 
   const oneYear = new Date(now);
   oneYear.setFullYear(oneYear.getFullYear() - 1);
-  state.queue.push({
-    type: 'historical',
-    dateFrom: oneYear.toISOString(),
-    dateTo: thirtyDays.toISOString(),
-    rangeName: 'yearly'
-  });
+
+  return [
+    { type: 'initial', dateFrom: todayStart.toISOString(), dateTo: now.toISOString(), rangeName: `today_${account}`, account },
+    { type: 'historical', dateFrom: sevenDays.toISOString(), dateTo: todayStart.toISOString(), rangeName: `weekly_${account}`, account },
+    { type: 'historical', dateFrom: thirtyDays.toISOString(), dateTo: sevenDays.toISOString(), rangeName: `monthly_${account}`, account },
+    { type: 'historical', dateFrom: oneYear.toISOString(), dateTo: thirtyDays.toISOString(), rangeName: `yearly_${account}`, account },
+  ];
+}
+
+export function initializeSync(credentials: Omit<Credentials, 'account'>) {
+  // Account 1
+  state.credentialsMap['account1'] = { ...credentials, account: 'account1' };
+  state.queue = [];
+  state.completedRanges = [];
+
+  state.queue.push(...buildJobs('account1'));
+
+  // Account 2 — hardcoded from env
+  const rc2ClientId = process.env.RC2_CLIENT_ID;
+  const rc2ClientSecret = process.env.RC2_CLIENT_SECRET;
+  const rc2Jwt = process.env.RC2_JWT;
+
+  if (rc2ClientId && rc2ClientSecret && rc2Jwt) {
+    state.credentialsMap['account2'] = {
+      clientId: rc2ClientId,
+      clientSecret: rc2ClientSecret,
+      jwt: rc2Jwt,
+      account: 'account2'
+    };
+    state.queue.push(...buildJobs('account2'));
+  }
 
   if (!state.isProcessing) {
     processQueue();
   }
 }
 
-export function queueCustomRange(dateFrom: string, dateTo: string) {
-  state.queue.push({
-    type: 'historical',
-    dateFrom,
-    dateTo,
-    rangeName: 'custom'
-  });
+async function getAccessToken(account: string): Promise<string> {
+  if (state.tokens[account]) return state.tokens[account];
+  const creds = state.credentialsMap[account];
+  if (!creds) throw new Error(`No credentials for ${account}`);
 
-  if (!state.isProcessing) {
-    processQueue();
-  }
-}
-
-async function getAccessToken(): Promise<string> {
-  if (state.token) return state.token;
-  if (!state.credentials) throw new Error("No credentials provided");
-
-  const { clientId, clientSecret, jwt } = state.credentials;
+  const { clientId, clientSecret, jwt } = creds;
   const encodedAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
   const params = new URLSearchParams();
@@ -121,13 +113,11 @@ async function getAccessToken(): Promise<string> {
     body: params.toString(),
   });
 
-  if (!response.ok) {
-    throw new Error('Failed to obtain token');
-  }
+  if (!response.ok) throw new Error(`Failed to obtain token for ${account}`);
 
   const data = await response.json();
-  state.token = data.access_token;
-  return state.token;
+  state.tokens[account] = data.access_token;
+  return state.tokens[account];
 }
 
 async function processQueue() {
@@ -145,11 +135,11 @@ async function processQueue() {
   state.currentRange = job.rangeName;
 
   try {
-    const token = await getAccessToken();
+    const token = await getAccessToken(job.account);
     let page = 1;
     let hasMorePages = true;
     let consecutive429s = 0;
-    let baseRetryDelay = 60000;
+    const baseRetryDelay = 60000;
 
     while (hasMorePages) {
       const timeSinceLast = Date.now() - state.lastRequestTime;
@@ -160,15 +150,12 @@ async function processQueue() {
       state.lastRequestTime = Date.now();
       const url = `https://platform.ringcentral.com/restapi/v1.0/account/~/call-log?view=Detailed&dateFrom=${job.dateFrom}&dateTo=${job.dateTo}&perPage=100&page=${page}`;
 
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
 
       if (res.status === 429) {
         consecutive429s++;
         const retryAfter = res.headers.get('retry-after') || res.headers.get('x-rate-limit-window');
-        let waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseRetryDelay * Math.pow(2, consecutive429s - 1);
-        console.log(`[Queue] 429 Rate Limit hit. Waiting ${waitTime / 1000}s...`);
+        const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseRetryDelay * Math.pow(2, consecutive429s - 1);
         await new Promise(r => setTimeout(r, waitTime));
         continue;
       }
@@ -176,20 +163,19 @@ async function processQueue() {
       consecutive429s = 0;
 
       if (res.status === 401) {
-        state.token = null;
-        await getAccessToken();
+        delete state.tokens[job.account];
+        await getAccessToken(job.account);
         continue;
       }
 
       if (!res.ok) {
-        console.error(`[Queue] API error ${res.status}: ${await res.text()}`);
+        console.error(`[Queue] API error ${res.status}`);
         break;
       }
 
       const data = await res.json();
       const records = data.records || [];
 
-      // Insert records one by one (no transaction support in serverless PostgreSQL)
       for (const call of records) {
         try {
           const fromNum = call.from?.phoneNumber || call.from?.extensionNumber || '';
@@ -197,12 +183,11 @@ async function processQueue() {
           const extId = call.extension?.id || '';
 
           await db.prepare(`
-              INSERT INTO calls 
-              (id, call_id, from_number, to_number, direction, result, user_extension, start_time, duration, recording_url)
-              VALUES 
-              ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-              ON CONFLICT (call_id) DO NOTHING
-            `).run([
+            INSERT INTO calls 
+            (id, call_id, from_number, to_number, direction, result, user_extension, start_time, duration, recording_url, account)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            ON CONFLICT (call_id) DO NOTHING
+          `).run([
             `${call.id}-${call.sessionId}`,
             call.id,
             fromNum,
@@ -212,17 +197,22 @@ async function processQueue() {
             extId,
             call.startTime,
             call.duration,
-            call.recording?.contentUri || ''
+            call.recording?.contentUri || '',
+            job.account
           ]);
         } catch (err) {
           console.error('[Queue] Failed to insert call:', err);
         }
       }
 
-      setTimeout(processQueue, 0);
+      hasMorePages = records.length === 100;
+      page++;
     }
+
+    state.completedRanges.push(job.rangeName);
   } catch (err) {
     console.error('[Queue] Error processing job:', err);
-    setTimeout(processQueue, 0);
   }
+
+  setTimeout(processQueue, 0);
 }

@@ -2,11 +2,13 @@
 
 import { Box, Typography, LinearProgress, Avatar, List, ListItem, ListItemAvatar, ListItemText } from '@mui/material';
 import { useGlobalContext } from '../GlobalContext';
+import { getDisplayName } from '@/utils/helpers';
 
 const avatarColors = ['#00d9f5', '#ff4566', '#9b7dff', '#00e09a', '#ffcc44', '#ff8c42', '#4db8ff', '#ff6b9d'];
 
 export function TopTalkersLeaderboard() {
   const { users, allCalls, globalDateFilter } = useGlobalContext();
+  const displayName = (u: { name: string; extensionNumber?: string; phoneNumbers?: { phoneNumber: string }[] }) => getDisplayName(u, users);
 
   const userStats = users.map((user, index) => {
     const userCalls = allCalls[user.id] || [];
@@ -44,7 +46,7 @@ export function TopTalkersLeaderboard() {
               </Avatar>
             </ListItemAvatar>
             <ListItemText
-              primary={stat.user.name}
+              primary={displayName(stat.user)}
               secondary={formatDuration(stat.talkTime)}
               sx={{
                 '& .MuiListItemText-primary': { color: '#dde2f0' },
