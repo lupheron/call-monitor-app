@@ -151,85 +151,73 @@ async function processQueue() {
     let consecutive429s = 0;
     let baseRetryDelay = 60000;
 
-    const insertCall = db.prepare(`
-      INSERT OR IGNORE INTO calls 
-      (id, call_id, from_number, to_number, direction, result, user_extension, start_time, duration, recording_url)
-      VALUES 
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    while (hasMorePages) {
-      const timeSinceLast = Date.now() - state.lastRequestTime;
-      if (timeSinceLast < DELAY_BETWEEN_REQUESTS) {
-        await new Promise(r => setTimeout(r, DELAY_BETWEEN_REQUESTS - timeSinceLast));
-      }
-
-      state.lastRequestTime = Date.now();
-      const url = `https://platform.ringcentral.com/restapi/v1.0/account/~/call-log?view=Detailed&dateFrom=${job.dateFrom}&dateTo=${job.dateTo}&perPage=100&page=${page}`;
-      
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (res.status === 429) {
-        consecutive429s++;
-        const retryAfter = res.headers.get('retry-after') || res.headers.get('x-rate-limit-window');
-        let waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseRetryDelay * Math.pow(2, consecutive429s - 1);
-        console.log(`[Queue] 429 Rate Limit hit. Waiting ${waitTime/1000}s...`);
-        await new Promise(r => setTimeout(r, waitTime));
-        continue;
-      }
-
-      consecutive429s = 0;
-
-      if (res.status === 401) {
-        state.token = null;
-        await getAccessToken();
-        continue;
-      }
-
-      if (!res.ok) {
-        console.error(`[Queue] API error ${res.status}: ${await res.text()}`);
-        break; 
-      }
-
-      const data = await res.json();
-      const records = data.records || [];
-      const transaction = db.transaction((calls: any[]) => {
-        for (const call of calls) {
-          const fromNum = call.from?.phoneNumber || call.from?.extensionNumber || '';
-          const toNum = call.to?.phoneNumber || call.to?.extensionNumber || '';
-          const extId = call.extension?.id || '';
-
-          insertCall.run(
-            `${call.id}-${call.sessionId}`,
-            call.id,
-            fromNum,
-            toNum,
-            call.direction,
-            call.result,
-            extId,
-            call.startTime,
-            call.duration,
-            call.recording?.contentUri || ''
-          );
+      while (hasMorePages) {
+        const timeSinceLast = Date.now() - state.lastRequestTime;
+        if (timeSinceLast < DELAY_BETWEEN_REQUESTS) {
+          await new Promise(r => setTimeout(r, DELAY_BETWEEN_REQUESTS - timeSinceLast));
         }
-      });
 
-      transaction(records);
+        state.lastRequestTime = Date.now();
+        const url = `https://platform.ringcentral.com/restapi/v1.0/account/~/call-log?view=Detailed&dateFrom=${job.dateFrom}&dateTo=${job.dateTo}&perPage=100&page=${page}`;
+        
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-      if (records.length < 100) {
-        hasMorePages = false;
-      } else {
-        page++;
-      }
-    }
+        if (res.status === 429) {
+          consecutive429s++;
+          const retryAfter = res.headers.get('retry-after') || res.headers.get('x-rate-limit-window');
+          let waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseRetryDelay * Math.pow(2, consecutive429s - 1);
+          console.log(`[Queue] 429 Rate Limit hit. Waiting ${waitTime/1000}s...`);
+          await new Promise(r => setTimeout(r, waitTime));
+          continue;
+        }
 
-    state.completedRanges.push(job.rangeName);
+        consecutive429s = 0;
 
-  } catch (err) {
-    console.error(`[Queue] Job failed:`, err);
-  }
+        if (res.status === 401) {
+          state.token = null;
+          await getAccessToken();
+          continue;
+        }
+
+        if (!res.ok) {
+          console.error(`[Queue] API error ${res.status}: ${await res.text()}`);
+          break; 
+        }
+
+        const data = await res.json();
+        const records = data.records || [];
+
+        // Insert records one by one (no transaction support in serverless PostgreSQL)
+        for (const call of records) {
+          try {
+            const fromNum = call.from?.phoneNumber || call.from?.extensionNumber || '';
+            const toNum = call.to?.phoneNumber || call.to?.extensionNumber || '';
+            const extId = call.extension?.id || '';
+
+            await db.prepare(`
+              INSERT INTO calls 
+              (id, call_id, from_number, to_number, direction, result, user_extension, start_time, duration, recording_url)
+              VALUES 
+              ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+              ON CONFLICT (call_id) DO NOTHING
+            `).run(
+              `${call.id}-${call.sessionId}`,
+              call.id,
+              fromNum,
+              toNum,
+              call.direction,
+              call.result,
+              extId,
+              call.startTime,
+              call.duration,
+              call.recording?.contentUri || ''
+            );
+          } catch (err) {
+            console.error('[Queue] Failed to insert call:', err);
+          }
+        }
 
   setTimeout(processQueue, 0);
 }

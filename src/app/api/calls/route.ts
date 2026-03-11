@@ -32,40 +32,54 @@ export async function GET(request: Request) {
 
   const normalizeExtId = (id: string) => id.replace(/\.0$/, '');
   const normalizedIds = extensionIds.map(normalizeExtId);
-  const placeholders = normalizedIds.map(() => '?').join(',');
 
-  let rows: any[];
-  if (cutoff) {
-    rows = db.prepare(
-      `SELECT * FROM calls WHERE REPLACE(user_extension, '.0', '') IN (${placeholders}) AND start_time >= ? ORDER BY start_time DESC`
-    ).all(...normalizedIds, cutoff.toISOString());
-  } else {
-    rows = db.prepare(
-      `SELECT * FROM calls WHERE REPLACE(user_extension, '.0', '') IN (${placeholders}) ORDER BY start_time DESC`
-    ).all(...normalizedIds);
+  try {
+    let rows: any[];
+    
+    if (cutoff) {
+      const query = `
+        SELECT * FROM calls 
+        WHERE REPLACE(user_extension, '.0', '') = ANY($1::text[])
+        AND start_time >= $2
+        ORDER BY start_time DESC
+      `;
+      const result = await db.prepare(query).all(normalizedIds, cutoff.toISOString());
+      rows = result;
+    } else {
+      const query = `
+        SELECT * FROM calls 
+        WHERE REPLACE(user_extension, '.0', '') = ANY($1::text[])
+        ORDER BY start_time DESC
+      `;
+      const result = await db.prepare(query).all(normalizedIds);
+      rows = result;
+    }
+
+    const MAX_PER_EXTENSION = 500;
+    const perExtensionCount: Record<string, number> = {};
+
+    const limitedRows = rows.filter((r: any) => {
+      const ext = normalizeExtId(String(r.user_extension));
+      const current = perExtensionCount[ext] ?? 0;
+      if (current >= MAX_PER_EXTENSION) return false;
+      perExtensionCount[ext] = current + 1;
+      return true;
+    });
+
+    const records = limitedRows.map((r: any) => ({
+      id: r.call_id,
+      direction: r.direction,
+      result: r.result,
+      startTime: r.start_time,
+      duration: r.duration,
+      from: { phoneNumber: r.from_number },
+      to: { phoneNumber: r.to_number },
+      extension: { id: normalizeExtId(String(r.user_extension)) }
+    }));
+
+    return NextResponse.json({ records, total: records.length });
+  } catch (error: any) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to fetch calls' }, { status: 500 });
   }
-
-  const MAX_PER_EXTENSION = 500;
-  const perExtensionCount: Record<string, number> = {};
-
-  const limitedRows = rows.filter((r: any) => {
-    const ext = normalizeExtId(String(r.user_extension));
-    const current = perExtensionCount[ext] ?? 0;
-    if (current >= MAX_PER_EXTENSION) return false;
-    perExtensionCount[ext] = current + 1;
-    return true;
-  });
-
-  const records = limitedRows.map((r: any) => ({
-    id: r.call_id,
-    direction: r.direction,
-    result: r.result,
-    startTime: r.start_time,
-    duration: r.duration,
-    from: { phoneNumber: r.from_number },
-    to: { phoneNumber: r.to_number },
-    extension: { id: normalizeExtId(String(r.user_extension)) }
-  }));
-
-  return NextResponse.json({ records, total: records.length });
 }

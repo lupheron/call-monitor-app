@@ -27,12 +27,6 @@ export async function POST(request: Request) {
 
   globalAny.syncRunning = true;
 
-  const insertCall = db.prepare(`
-    INSERT OR IGNORE INTO calls 
-    (id, call_id, from_number, to_number, direction, result, user_extension, start_time, duration, recording_url)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
   let totalInserted = 0;
   const perExtensionInserted: Record<string, number> = {};
   const lastRequestTime = { value: 0 };
@@ -102,12 +96,18 @@ export async function POST(request: Request) {
         const data = await res.json();
         const records = (data.records || []) as any[];
 
-        const txn = db.transaction((calls: any[]) => {
-          for (const c of calls) {
+        // Insert records one by one (no transaction support in serverless)
+        for (const c of records) {
+          try {
             const from = c.from?.phoneNumber || c.from?.extensionNumber || '';
             const to = c.to?.phoneNumber || c.to?.extensionNumber || '';
 
-            insertCall.run(
+            await db.prepare(`
+              INSERT INTO calls 
+              (id, call_id, from_number, to_number, direction, result, user_extension, start_time, duration, recording_url)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+              ON CONFLICT (call_id) DO NOTHING
+            `).run(
               `${c.id}-${c.sessionId}`,
               c.id,
               from,
@@ -122,10 +122,11 @@ export async function POST(request: Request) {
 
             perExtensionInserted[extId] = (perExtensionInserted[extId] || 0) + 1;
             totalInserted += 1;
+          } catch (err) {
+            console.error('[sync] Failed to insert call:', err);
           }
-        });
+        }
 
-        txn(records);
         if ((perExtensionInserted[extId] || 0) >= TARGET_PER_EXTENSION) {
           hasMore = false;
         } else {
