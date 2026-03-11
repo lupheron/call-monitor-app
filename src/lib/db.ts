@@ -34,7 +34,7 @@ export const db = {
   prepare: (text: string) => ({
     run: async (...values: any[]) => {
       try {
-        return await sql(text, values);
+        return await sql.unsafe(text, values as any);
       } catch (error) {
         console.error('[db.run] SQL Error:', error);
         throw error;
@@ -42,7 +42,8 @@ export const db = {
     },
     all: async (...values: any[]) => {
       try {
-        return await sql(text, values) || [];
+        const result = await sql.unsafe(text, values as any);
+        return Array.from(result) || [];
       } catch (error) {
         console.error('[db.all] SQL Error:', error);
         throw error;
@@ -50,8 +51,9 @@ export const db = {
     },
     get: async (...values: any[]) => {
       try {
-        const result = await sql(text, values);
-        return result?.[0] || null;
+        const result = await sql.unsafe(text, values as any);
+        const rows = Array.from(result);
+        return rows[0] || null;
       } catch (error) {
         console.error('[db.get] SQL Error:', error);
         throw error;
