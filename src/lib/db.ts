@@ -1,5 +1,8 @@
 import { sql } from '@vercel/postgres';
 
+// log connection info for debugging
+console.log('db.ts loading, POSTGRES_URL length=', (process.env.POSTGRES_URL||'').length, 'DATABASE_URL length=', (process.env.DATABASE_URL||'').length);
+
 // Initialize database schema on startup
 async function initializeDatabase() {
   try {
