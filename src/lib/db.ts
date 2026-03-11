@@ -33,27 +33,33 @@ async function initializeDatabase() {
 initializeDatabase().catch(console.error);
 
 export const db = {
-  query: async (text: string, values: any[] = []) => {
-    return sql.query(text, values);
-  },
-  
-  execute: async (text: string, values: any[] = []) => {
-    const result = await sql.query(text, values);
-    return result;
-  },
-
   prepare: (text: string) => {
     return {
       run: async (...values: any[]) => {
-        return sql.query(text, values);
+        try {
+          return await sql.query(text, values);
+        } catch (error) {
+          console.error('SQL Error:', error);
+          throw error;
+        }
       },
       all: async (...values: any[]) => {
-        const result = await sql.query(text, values);
-        return result.rows || [];
+        try {
+          const result = await sql.query(text, values);
+          return result.rows || [];
+        } catch (error) {
+          console.error('SQL Error:', error);
+          throw error;
+        }
       },
       get: async (...values: any[]) => {
-        const result = await sql.query(text, values);
-        return result.rows?.[0] || null;
+        try {
+          const result = await sql.query(text, values);
+          return result.rows?.[0] || null;
+        } catch (error) {
+          console.error('SQL Error:', error);
+          throw error;
+        }
       }
     };
   },
