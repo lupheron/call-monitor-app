@@ -32,8 +32,8 @@ const state = globalAny.syncState;
 const DELAY_BETWEEN_REQUESTS = 1200;
 
 export function getSyncStatus() {
-  return { 
-    status: state.status, 
+  return {
+    status: state.status,
     range: state.currentRange,
     isProcessing: state.isProcessing,
     completedRanges: state.completedRanges
@@ -44,11 +44,11 @@ export function initializeSync(credentials: Credentials) {
   state.credentials = credentials;
   state.queue = [];
   state.completedRanges = [];
-  
+
   const now = new Date();
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
-  
+
   state.queue.push({
     type: 'initial',
     dateFrom: todayStart.toISOString(),
@@ -95,7 +95,7 @@ export function queueCustomRange(dateFrom: string, dateTo: string) {
     dateTo,
     rangeName: 'custom'
   });
-  
+
   if (!state.isProcessing) {
     processQueue();
   }
@@ -140,7 +140,7 @@ async function processQueue() {
 
   state.isProcessing = true;
   state.status = 'syncing';
-  
+
   const job = state.queue.shift()!;
   state.currentRange = job.rangeName;
 
@@ -151,73 +151,78 @@ async function processQueue() {
     let consecutive429s = 0;
     let baseRetryDelay = 60000;
 
-      while (hasMorePages) {
-        const timeSinceLast = Date.now() - state.lastRequestTime;
-        if (timeSinceLast < DELAY_BETWEEN_REQUESTS) {
-          await new Promise(r => setTimeout(r, DELAY_BETWEEN_REQUESTS - timeSinceLast));
-        }
+    while (hasMorePages) {
+      const timeSinceLast = Date.now() - state.lastRequestTime;
+      if (timeSinceLast < DELAY_BETWEEN_REQUESTS) {
+        await new Promise(r => setTimeout(r, DELAY_BETWEEN_REQUESTS - timeSinceLast));
+      }
 
-        state.lastRequestTime = Date.now();
-        const url = `https://platform.ringcentral.com/restapi/v1.0/account/~/call-log?view=Detailed&dateFrom=${job.dateFrom}&dateTo=${job.dateTo}&perPage=100&page=${page}`;
-        
-        const res = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+      state.lastRequestTime = Date.now();
+      const url = `https://platform.ringcentral.com/restapi/v1.0/account/~/call-log?view=Detailed&dateFrom=${job.dateFrom}&dateTo=${job.dateTo}&perPage=100&page=${page}`;
 
-        if (res.status === 429) {
-          consecutive429s++;
-          const retryAfter = res.headers.get('retry-after') || res.headers.get('x-rate-limit-window');
-          let waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseRetryDelay * Math.pow(2, consecutive429s - 1);
-          console.log(`[Queue] 429 Rate Limit hit. Waiting ${waitTime/1000}s...`);
-          await new Promise(r => setTimeout(r, waitTime));
-          continue;
-        }
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
-        consecutive429s = 0;
+      if (res.status === 429) {
+        consecutive429s++;
+        const retryAfter = res.headers.get('retry-after') || res.headers.get('x-rate-limit-window');
+        let waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseRetryDelay * Math.pow(2, consecutive429s - 1);
+        console.log(`[Queue] 429 Rate Limit hit. Waiting ${waitTime / 1000}s...`);
+        await new Promise(r => setTimeout(r, waitTime));
+        continue;
+      }
 
-        if (res.status === 401) {
-          state.token = null;
-          await getAccessToken();
-          continue;
-        }
+      consecutive429s = 0;
 
-        if (!res.ok) {
-          console.error(`[Queue] API error ${res.status}: ${await res.text()}`);
-          break; 
-        }
+      if (res.status === 401) {
+        state.token = null;
+        await getAccessToken();
+        continue;
+      }
 
-        const data = await res.json();
-        const records = data.records || [];
+      if (!res.ok) {
+        console.error(`[Queue] API error ${res.status}: ${await res.text()}`);
+        break;
+      }
 
-        // Insert records one by one (no transaction support in serverless PostgreSQL)
-        for (const call of records) {
-          try {
-            const fromNum = call.from?.phoneNumber || call.from?.extensionNumber || '';
-            const toNum = call.to?.phoneNumber || call.to?.extensionNumber || '';
-            const extId = call.extension?.id || '';
+      const data = await res.json();
+      const records = data.records || [];
 
-            await db.prepare(`
+      // Insert records one by one (no transaction support in serverless PostgreSQL)
+      for (const call of records) {
+        try {
+          const fromNum = call.from?.phoneNumber || call.from?.extensionNumber || '';
+          const toNum = call.to?.phoneNumber || call.to?.extensionNumber || '';
+          const extId = call.extension?.id || '';
+
+          await db.prepare(`
               INSERT INTO calls 
               (id, call_id, from_number, to_number, direction, result, user_extension, start_time, duration, recording_url)
               VALUES 
               ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
               ON CONFLICT (call_id) DO NOTHING
             `).run(
-              `${call.id}-${call.sessionId}`,
-              call.id,
-              fromNum,
-              toNum,
-              call.direction,
-              call.result,
-              extId,
-              call.startTime,
-              call.duration,
-              call.recording?.contentUri || ''
-            );
-          } catch (err) {
-            console.error('[Queue] Failed to insert call:', err);
-          }
+            `${call.id}-${call.sessionId}`,
+            call.id,
+            fromNum,
+            toNum,
+            call.direction,
+            call.result,
+            extId,
+            call.startTime,
+            call.duration,
+            call.recording?.contentUri || ''
+          );
+        } catch (err) {
+          console.error('[Queue] Failed to insert call:', err);
         }
+      }
 
-  setTimeout(processQueue, 0);
+      setTimeout(processQueue, 0);
+    }
+  } catch (err) {
+    console.error('[Queue] Error processing job:', err);
+    setTimeout(processQueue, 0);
+  }
 }
