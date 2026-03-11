@@ -35,32 +35,48 @@ async function initializeDatabase() {
 // Initialize on module load
 initializeDatabase().catch(console.error);
 
+// Helper to convert ? placeholders to PostgreSQL $1, $2, etc
+function buildQuery(query: string, values: any[]) {
+  let paramIndex = 1;
+  let result = query;
+  
+  for (const value of values) {
+    result = result.replace('?', `$${paramIndex}`);
+    paramIndex++;
+  }
+  
+  return { query: result, values };
+}
+
 export const db = {
   prepare: (text: string) => {
     return {
       run: async (...values: any[]) => {
         try {
-          return await sql.query(text, values);
+          const { query, values: pgValues } = buildQuery(text, values);
+          return await sql.unsafe(query, pgValues);
         } catch (error) {
-          console.error('SQL Error:', error);
+          console.error('[db.run] SQL Error:', error);
           throw error;
         }
       },
       all: async (...values: any[]) => {
         try {
-          const result = await sql.query(text, values);
+          const { query, values: pgValues } = buildQuery(text, values);
+          const result = await sql.unsafe(query, pgValues);
           return result.rows || [];
         } catch (error) {
-          console.error('SQL Error:', error);
+          console.error('[db.all] SQL Error:', error);
           throw error;
         }
       },
       get: async (...values: any[]) => {
         try {
-          const result = await sql.query(text, values);
+          const { query, values: pgValues } = buildQuery(text, values);
+          const result = await sql.unsafe(query, pgValues);
           return result.rows?.[0] || null;
         } catch (error) {
-          console.error('SQL Error:', error);
+          console.error('[db.get] SQL Error:', error);
           throw error;
         }
       }
@@ -69,8 +85,6 @@ export const db = {
 
   transaction: (fn: (db: any) => Promise<void> | void) => {
     return async (data: any) => {
-      // Vercel Postgres doesn't support transactions in the same way,
-      // so we'll execute the function and let errors propagate
       return fn(db);
     };
   }
