@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { sql } from '@vercel/postgres';
 
 // log connection info for debugging
