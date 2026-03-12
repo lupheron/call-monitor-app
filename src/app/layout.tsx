@@ -3,6 +3,8 @@ import { Syne, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/Providers';
 import { GlobalProvider } from '@/components/GlobalContext';
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/next"
 
 const syne = Syne({
   subsets: ['latin'],
@@ -33,6 +35,8 @@ export default function RootLayout({
         </Providers>
         <div className="glow-orb top-left" />
         <div className="glow-orb bottom-right" />
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
