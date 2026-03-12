@@ -3,34 +3,55 @@
 import { Box, Typography } from '@mui/material';
 import { RCUser, UserCalls, CallRecord } from '@/types';
 import { fmtDuration } from '@/utils/helpers';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useGlobalContext } from '@/components/GlobalContext';
+
+function filterCallsByTimeRange(calls: CallRecord[], preset: string): CallRecord[] {
+  if (preset === 'all') return calls;
+  const now = new Date();
+  const cutoff = new Date(now);
+  if (preset === 'today') cutoff.setDate(now.getDate() - 1);
+  else if (preset === 'week') cutoff.setDate(now.getDate() - 7);
+  else if (preset === 'month') cutoff.setMonth(now.getMonth() - 1);
+  return calls.filter((c) => new Date(c.startTime) >= cutoff);
+}
 
 export default function StatsRow({ users, allCalls }: { users: RCUser[], allCalls: UserCalls }) {
-  const [totalCalls, setTotalCalls] = useState(0);
-  const [totalDuration, setTotalDuration] = useState(0);
-  const [totalOutbound, setTotalOutbound] = useState(0);
-  const [totalMissed, setTotalMissed] = useState(0);
+  const { globalDateFilter } = useGlobalContext();
 
-  useEffect(() => {
+  const { totalCalls, totalDuration, totalOutbound, totalMissed } = useMemo(() => {
     let callsCount = 0;
     let durationSum = 0;
     let outboundCount = 0;
     let missedCount = 0;
 
+    const preset = globalDateFilter.preset;
+    const isCustom = preset === 'custom';
+    const from = globalDateFilter.from ? new Date(globalDateFilter.from) : null;
+    const to = globalDateFilter.to ? new Date(globalDateFilter.to) : null;
+
     Object.values(allCalls).forEach((calls: CallRecord[]) => {
-      callsCount += calls.length;
-      calls.forEach((c: CallRecord) => {
+      let filtered: CallRecord[];
+      if (isCustom && from && to) {
+        const toEnd = new Date(to);
+        toEnd.setHours(23, 59, 59, 999);
+        filtered = calls.filter((c) => {
+          const d = new Date(c.startTime);
+          return d >= from && d <= toEnd;
+        });
+      } else {
+        filtered = filterCallsByTimeRange(calls, preset);
+      }
+      callsCount += filtered.length;
+      filtered.forEach((c: CallRecord) => {
         durationSum += c.duration;
         if (c.direction === 'Outbound') outboundCount++;
         if (c.result === 'Missed') missedCount++;
       });
     });
 
-    setTotalCalls(callsCount);
-    setTotalDuration(durationSum);
-    setTotalOutbound(outboundCount);
-    setTotalMissed(missedCount);
-  }, [allCalls]);
+    return { totalCalls: callsCount, totalDuration: durationSum, totalOutbound: outboundCount, totalMissed: missedCount };
+  }, [allCalls, globalDateFilter]);
 
   const stats = [
     { label: 'TOTAL USERS', value: users.length.toString(), color: 'var(--accent)' },

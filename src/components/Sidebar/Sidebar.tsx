@@ -120,10 +120,11 @@ export default function Sidebar({
       </Box>
 
       <List sx={{ p: 0, overflowY: 'auto', flex: 1, backgroundColor: 'transparent' }}>
-        {filteredUsers.map((user, index) => {
+        {filteredUsers.map((user) => {
           const calls = allCalls[user.id] || [];
           const talkTime = calls.reduce((acc: number, c: CallRecord) => acc + c.duration, 0);
           const isActive = activeView === 'user' && selectedUser?.id === user.id;
+          const userIndex = users.findIndex((u) => u.id === user.id);
 
           const phoneNumbersString = user.phoneNumbers
             ? user.phoneNumbers.map((n: any) => n.phoneNumber).filter(Boolean).join(', ')
@@ -147,7 +148,7 @@ export default function Sidebar({
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
-                <Avatar sx={{ bgcolor: getColor(index), width: 36, height: 36, fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
+                <Avatar sx={{ bgcolor: getColor(userIndex >= 0 ? userIndex : 0), width: 36, height: 36, fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
                   {getInitials(user.name)}
                 </Avatar>
 

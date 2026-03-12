@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { RCUser, UserCalls, CallRecord } from '@/types';
 
 interface GlobalDateFilter {
-  preset: 'today' | 'week' | 'month' | 'custom';
+  preset: 'today' | 'week' | 'month' | 'all' | 'custom';
   from: string;
   to: string;
 }

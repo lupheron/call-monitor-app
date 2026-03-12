@@ -12,14 +12,14 @@ import {
   BarElement,
 } from 'chart.js';
 import { RCUser, UserCalls, CallRecord } from '@/types';
-import { fmtDuration, getDisplayName } from '@/utils/helpers';
+import { fmtDuration, getDisplayName, getColor } from '@/utils/helpers';
 import { useMemo, useState } from 'react';
 import { useGlobalContext } from '@/components/GlobalContext';
 import WaitingDashboard from './WaitingDashboard';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
-type TimeRange = 'Daily' | 'Weekly' | 'Monthly' | 'Yearly' | 'Custom';
+type TimeRange = 'Daily' | 'Weekly' | 'Monthly' | 'All' | 'Custom';
 
 export default function DashboardOverview({
   users,
@@ -36,23 +36,44 @@ export default function DashboardOverview({
       : globalDateFilter.preset === 'week' ? 'Weekly'
         : globalDateFilter.preset === 'month' ? 'Monthly'
           : globalDateFilter.preset === 'custom' ? 'Custom'
-            : 'Yearly';
+            : 'All';
 
   const filteredByUser = useMemo(() => {
+    const result: Record<number, CallRecord[]> = {};
+    if (timeRange === 'All') {
+      users.forEach((u) => {
+        result[u.id] = allCalls[u.id] || [];
+      });
+      return result;
+    }
     const now = new Date();
     const cutoff = new Date(now);
     if (timeRange === 'Daily') cutoff.setDate(now.getDate() - 1);
     else if (timeRange === 'Weekly') cutoff.setDate(now.getDate() - 7);
     else if (timeRange === 'Monthly') cutoff.setMonth(now.getMonth() - 1);
-    else cutoff.setFullYear(now.getFullYear() - 1);
+    else if (timeRange === 'Custom') {
+      const from = globalDateFilter.from ? new Date(globalDateFilter.from) : null;
+      const to = globalDateFilter.to ? new Date(globalDateFilter.to) : null;
+      if (from && to) {
+        const toEnd = new Date(to);
+        toEnd.setHours(23, 59, 59, 999);
+        users.forEach((u) => {
+          const calls = allCalls[u.id] || [];
+          result[u.id] = calls.filter((c) => {
+            const d = new Date(c.startTime);
+            return d >= from && d <= toEnd;
+          });
+        });
+        return result;
+      }
+    }
 
-    const result: Record<number, CallRecord[]> = {};
     users.forEach((u) => {
       const calls = allCalls[u.id] || [];
       result[u.id] = calls.filter((c) => new Date(c.startTime) >= cutoff);
     });
     return result;
-  }, [users, allCalls, timeRange]);
+  }, [users, allCalls, timeRange, globalDateFilter.from, globalDateFilter.to]);
 
   const perUserStats = useMemo(() => {
     return users.map((u) => {
@@ -80,7 +101,7 @@ export default function DashboardOverview({
     labels: perUserStats.map((u) => u.name),
     datasets: [{
       data: perUserStats.map((u) => u.callsCount),
-      backgroundColor: ['#00d9f5', '#ff4566', '#9b7dff', '#00e09a'],
+      backgroundColor: perUserStats.map((_, i) => getColor(i)),
       borderColor: 'rgba(0,0,0,0.2)',
       borderWidth: 1,
     }],
@@ -91,7 +112,7 @@ export default function DashboardOverview({
     datasets: [{
       label: 'Talk time (minutes)',
       data: perUserStats.map((u) => Math.round(u.duration / 60)),
-      backgroundColor: 'rgba(0,217,245,0.7)',
+      backgroundColor: perUserStats.map((_, i) => getColor(i)),
     }],
   };
 
@@ -141,12 +162,12 @@ export default function DashboardOverview({
             exclusive
             onChange={(_, v) => {
               if (!v) return;
-              const preset = v === 'Daily' ? 'today' : v === 'Weekly' ? 'week' : v === 'Monthly' ? 'month' : 'month';
+              const preset = v === 'Daily' ? 'today' : v === 'Weekly' ? 'week' : v === 'Monthly' ? 'month' : 'all';
               const from = new Date();
               if (v === 'Daily') from.setDate(from.getDate() - 1);
               else if (v === 'Weekly') from.setDate(from.getDate() - 7);
               else if (v === 'Monthly') from.setMonth(from.getMonth() - 1);
-              else from.setFullYear(from.getFullYear() - 1);
+              else if (v === 'All') from.setFullYear(from.getFullYear() - 10); // arbitrary old date for "all"
               setGlobalDateFilter({ preset, from: from.toISOString().split('T')[0], to: new Date().toISOString().split('T')[0] });
             }}
             size="small"
@@ -155,7 +176,7 @@ export default function DashboardOverview({
             <ToggleButton value="Daily">Today</ToggleButton>
             <ToggleButton value="Weekly">Weekly</ToggleButton>
             <ToggleButton value="Monthly">Monthly</ToggleButton>
-            <ToggleButton value="Yearly">Yearly</ToggleButton>
+            <ToggleButton value="All">All</ToggleButton>
           </ToggleButtonGroup>
         )}
       </Box>
@@ -171,7 +192,7 @@ export default function DashboardOverview({
             <Box>
               <Typography sx={{ fontSize: '1.25rem', fontWeight: 700 }}>Team Call Overview</Typography>
               <Typography sx={{ fontSize: '0.8rem', color: 'var(--text2)' }}>
-                Last {timeRange.toLowerCase()} · {totalCalls} calls · Top caller:{' '}
+                {timeRange === 'All' ? 'All time' : `Last ${timeRange.toLowerCase()}`} · {totalCalls} calls · Top caller:{' '}
                 {topCaller?.name || 'N/A'} ({topCaller?.callsCount || 0} calls,{' '}
                 {fmtDuration(topCaller?.duration || 0)})
               </Typography>

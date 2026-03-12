@@ -27,7 +27,7 @@ export default function UserDetail({
     : globalDateFilter.preset === 'week' ? 'Weekly'
     : globalDateFilter.preset === 'month' ? 'Monthly'
     : globalDateFilter.preset === 'custom' ? 'Custom'
-    : 'Yearly';
+    : 'All';
   const customDateFrom = globalDateFilter.preset === 'custom' ? globalDateFilter.from : '';
   const customDateTo = globalDateFilter.preset === 'custom' ? globalDateFilter.to : '';
 
@@ -49,9 +49,8 @@ export default function UserDetail({
     } else if (timeRange === 'Monthly') {
       cutoff.setMonth(now.getMonth() - 1);
       result = result.filter(c => new Date(c.startTime) >= cutoff);
-    } else if (timeRange === 'Yearly') {
-      cutoff.setFullYear(now.getFullYear() - 1);
-      result = result.filter(c => new Date(c.startTime) >= cutoff);
+    } else if (timeRange === 'All') {
+      // no filter - keep all calls
     } else if (timeRange === 'Custom') {
       if (customDateFrom) result = result.filter(c => new Date(c.startTime) >= new Date(customDateFrom));
       if (customDateTo) {
