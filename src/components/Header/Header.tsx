@@ -68,7 +68,7 @@ export default function Header({ status }: { status: 'idle' | 'connected' | 'err
           </Box>
 
           <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.2rem', letterSpacing: '-0.5px' }}>
-            Call<Box component="span" sx={{ color: 'var(--accent)' }}>Monitor</Box>
+            HR<Box component="span" sx={{ color: 'var(--accent)' }}>Monitoring</Box>
           </Typography>
 
           <Box sx={{ height: 20, width: '1px', backgroundColor: 'var(--border2)' }} />

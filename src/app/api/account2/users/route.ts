@@ -2,6 +2,23 @@ import { NextResponse } from 'next/server';
 
 const WHITELIST2 = ['Winston Smith', 'Alex Chester', 'Henry Safety Department', 'Michael Cole'];
 
+/** Normalize name for flexible matching (case, extra spaces, "Last, First" format) */
+function normalizeName(name: string): string {
+  return (name || '').toLowerCase().replace(/[,.\s]+/g, ' ').trim().replace(/\s+/g, ' ');
+}
+
+/** Build set of normalized name variants: "Michael Cole" -> {"michael cole", "cole michael"} */
+function buildWhitelistSet(): Set<string> {
+  const set = new Set<string>();
+  for (const name of WHITELIST2) {
+    const n = normalizeName(name);
+    set.add(n);
+    const parts = n.split(/\s+/);
+    if (parts.length >= 2) set.add(parts.reverse().join(' ')); // "Cole, Michael" -> "cole michael"
+  }
+  return set;
+}
+
 export async function GET() {
   try {
     const clientId = process.env.RC2_CLIENT_ID;
@@ -37,22 +54,24 @@ export async function GET() {
     const tokenData = await tokenRes.json();
     const token = tokenData.access_token;
 
-    // Fetch users
-    const usersRes = await fetch(
-      'https://platform.ringcentral.com/restapi/v1.0/account/~/extension?type=User&status=Enabled&perPage=100&page=1',
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    if (!usersRes.ok) {
-      const errBody = await usersRes.text();
-      console.error('[account2/users] Failed to fetch users:', usersRes.status, errBody);
-      return NextResponse.json({ users: [] });
+    // Paginate through all users (RingCentral may have >100 extensions)
+    const whitelistSet = buildWhitelistSet();
+    const allUsers: any[] = [];
+    let url: string | null = 'https://platform.ringcentral.com/restapi/v1.0/account/~/extension?type=User&status=Enabled&perPage=100&page=1';
+    while (url) {
+      const usersRes: Response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!usersRes.ok) {
+        const errBody = await usersRes.text();
+        console.error('[account2/users] Failed to fetch users:', usersRes.status, errBody);
+        break;
+      }
+      const usersData: { records?: any[]; navigation?: { nextPage?: { uri?: string } } } = await usersRes.json();
+      const records = usersData.records || [];
+      allUsers.push(...records);
+      url = usersData.navigation?.nextPage?.uri || null;
     }
 
-    const usersData = await usersRes.json();
-    const allUsers = usersData.records || [];
-    const filtered = allUsers.filter((u: any) => WHITELIST2.includes(u.name));
-
+    const filtered = allUsers.filter((u: any) => whitelistSet.has(normalizeName(u.name)));
     return NextResponse.json({ users: filtered });
   } catch (err) {
     console.error('[account2/users] Error:', err);

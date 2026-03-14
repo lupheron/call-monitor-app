@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   Drawer,
@@ -56,8 +55,8 @@ export default function NavSidebar() {
 
       <List>
         <ListItemButton
-          selected={pathname === '/'}
-          onClick={() => handleNavClick('/')}
+          selected={pathname === '/' || pathname === '/dashboard'}
+          onClick={() => handleNavClick('/dashboard')}
           sx={{
             '&.Mui-selected': {
               borderLeft: '4px solid #00d9f5',

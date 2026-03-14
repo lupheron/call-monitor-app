@@ -6,6 +6,8 @@ import { getInitials, getColor, fmtDuration, getDisplayName } from '@/utils/help
 import { useState, useMemo } from 'react';
 import SearchIcon from '@mui/icons-material/Search';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import { MONDAY_USERS } from '@/components/MondaySidebar/MondaySidebar';
 
 export default function Sidebar({
   users,
@@ -13,14 +15,22 @@ export default function Sidebar({
   selectedUser,
   onSelect,
   activeView,
-  onSelectDashboard
+  onSelectDashboard,
+  onSelectMonday,
+  onSelectMondayLeads,
+  selectedMondayUser,
+  onSelectMondayUser,
 }: {
   users: RCUser[];
   allCalls: UserCalls;
   selectedUser: RCUser | null;
   onSelect: (user: RCUser) => void;
-  activeView: 'overview' | 'user';
+  activeView: 'overview' | 'user' | 'monday' | 'monday-leads';
   onSelectDashboard: () => void;
+  onSelectMonday?: () => void;
+  onSelectMondayLeads?: () => void;
+  selectedMondayUser?: string | null;
+  onSelectMondayUser?: (user: string) => void;
 }) {
   const [search, setSearch] = useState('');
 
@@ -32,15 +42,11 @@ export default function Sidebar({
     });
   }, [users, search]);
 
+  const isMondayLeads = activeView === 'monday-leads';
+
   return (
     <Drawer
       variant="permanent"
-      PaperProps={{
-        style: {
-          height: 'fit-content',
-          top: 56,
-        }
-      }}
       sx={{
         width: 300,
         flexShrink: 0,
@@ -49,131 +55,246 @@ export default function Sidebar({
           boxSizing: 'border-box',
           backgroundColor: 'var(--surface)',
           borderRight: '1px solid var(--border)',
-          top: 60,
+          top: 56,
           height: 'calc(100vh - 56px)',
-          overflow: 'hidden'
+          maxHeight: 'calc(100vh - 56px)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
         },
       }}
     >
-      <ListItemButton
-        onClick={onSelectDashboard}
-        selected={activeView === 'overview'}
-        sx={{
-          py: 4.1,
-          px: 2,
-          borderBottom: '1px solid var(--border)',
-          borderLeft: activeView === 'overview' ? '3px solid var(--accent)' : '3px solid transparent',
-          backgroundColor: activeView === 'overview' ? 'rgba(0, 217, 245, 0.05)' : 'transparent',
-          '&.Mui-selected': {
-            backgroundColor: 'rgba(0, 217, 245, 0.05)',
-            '&:hover': { backgroundColor: 'rgba(0, 217, 245, 0.08)' }
-          },
-          '&:hover': { backgroundColor: 'var(--surface2)' }
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
-          <Avatar sx={{ bgcolor: 'var(--surface3)', width: 36, height: 36, borderRadius: 2 }}>
-            <DashboardIcon sx={{ fontSize: '1.1rem', color: activeView === 'overview' ? 'var(--accent)' : 'var(--text2)' }} />
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.9rem', color: activeView === 'overview' ? 'var(--accent)' : 'var(--text2)' }}>
-              Dashboard
-            </Typography>
-            <Typography noWrap sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text3)' }}>
-              Overview
-            </Typography>
+      {/* Div 1: Nav items - Dashboard, Monday Chart, Monday Leads */}
+      <Box sx={{ flexShrink: 0 }}>
+        <ListItemButton
+          onClick={onSelectDashboard}
+          selected={activeView === 'overview'}
+          sx={{
+            py: 4.1,
+            px: 2,
+            borderBottom: '1px solid var(--border)',
+            borderLeft: activeView === 'overview' ? '3px solid var(--accent)' : '3px solid transparent',
+            backgroundColor: activeView === 'overview' ? 'rgba(0, 217, 245, 0.05)' : 'transparent',
+            '&.Mui-selected': {
+              backgroundColor: 'rgba(0, 217, 245, 0.05)',
+              '&:hover': { backgroundColor: 'rgba(0, 217, 245, 0.08)' }
+            },
+            '&:hover': { backgroundColor: 'var(--surface2)' }
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
+            <Avatar sx={{ bgcolor: 'var(--surface3)', width: 36, height: 36, borderRadius: 2 }}>
+              <DashboardIcon sx={{ fontSize: '1.1rem', color: activeView === 'overview' ? 'var(--accent)' : 'var(--text2)' }} />
+            </Avatar>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.9rem', color: activeView === 'overview' ? 'var(--accent)' : 'var(--text2)' }}>
+                Dashboard
+              </Typography>
+              <Typography noWrap sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text3)' }}>
+                Overview
+              </Typography>
+            </Box>
           </Box>
-        </Box>
-      </ListItemButton>
+        </ListItemButton>
+
+        {onSelectMonday && (
+          <ListItemButton
+            onClick={onSelectMonday}
+            selected={activeView === 'monday'}
+            sx={{
+              py: 4.1,
+              px: 2,
+              borderBottom: '1px solid var(--border)',
+              borderLeft: activeView === 'monday' ? '3px solid var(--accent)' : '3px solid transparent',
+              backgroundColor: activeView === 'monday' ? 'rgba(0, 217, 245, 0.05)' : 'transparent',
+              '&.Mui-selected': {
+                backgroundColor: 'rgba(0, 217, 245, 0.05)',
+                '&:hover': { backgroundColor: 'rgba(0, 217, 245, 0.08)' }
+              },
+              '&:hover': { backgroundColor: 'var(--surface2)' }
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
+              <Avatar sx={{ bgcolor: 'var(--surface3)', width: 36, height: 36, borderRadius: 2 }}>
+                <BarChartIcon sx={{ fontSize: '1.1rem', color: activeView === 'monday' ? 'var(--accent)' : 'var(--text2)' }} />
+              </Avatar>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.9rem', color: activeView === 'monday' ? 'var(--accent)' : 'var(--text2)' }}>
+                  Monday Chart
+                </Typography>
+                <Typography noWrap sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text3)' }}>
+                  HR Leads
+                </Typography>
+              </Box>
+            </Box>
+          </ListItemButton>
+        )}
+
+        {onSelectMondayLeads && (
+          <ListItemButton
+            onClick={onSelectMondayLeads}
+            selected={activeView === 'monday-leads'}
+            sx={{
+              py: 4.1,
+              px: 2,
+              borderBottom: '1px solid var(--border)',
+              borderLeft: activeView === 'monday-leads' ? '3px solid var(--accent)' : '3px solid transparent',
+              backgroundColor: activeView === 'monday-leads' ? 'rgba(0, 217, 245, 0.05)' : 'transparent',
+              '&.Mui-selected': {
+                backgroundColor: 'rgba(0, 217, 245, 0.05)',
+                '&:hover': { backgroundColor: 'rgba(0, 217, 245, 0.08)' }
+              },
+              '&:hover': { backgroundColor: 'var(--surface2)' }
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
+              <Avatar sx={{ bgcolor: 'var(--surface3)', width: 36, height: 36, borderRadius: 2 }}>
+                <BarChartIcon sx={{ fontSize: '1.1rem', color: activeView === 'monday-leads' ? 'var(--accent)' : 'var(--text2)' }} />
+              </Avatar>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.9rem', color: activeView === 'monday-leads' ? 'var(--accent)' : 'var(--text2)' }}>
+                  Monday Leads
+                </Typography>
+                <Typography noWrap sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text3)' }}>
+                  By user
+                </Typography>
+              </Box>
+            </Box>
+          </ListItemButton>
+        )}
+      </Box>
 
       <Divider sx={{ borderColor: 'var(--border)' }} />
 
-      <Box sx={{ p: 2, borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text2)', letterSpacing: '1px' }}>
-          USERS &middot; {filteredUsers.length}
-        </Typography>
-        <TextField
-          variant="outlined"
-          placeholder="Search name or phone..."
-          size="small"
-          fullWidth
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              backgroundColor: 'var(--bg)',
-              '& fieldset': { borderColor: 'var(--border2)' },
-              '&:hover fieldset': { borderColor: 'var(--text3)' },
-            },
-            input: { color: 'var(--text)', fontSize: '0.9rem' }
-          }}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ color: 'var(--text3)', fontSize: '1.2rem' }} />
-                </InputAdornment>
-              ),
-            }
-          }}
-        />
-      </Box>
-
-      <List sx={{ p: 0, overflowY: 'auto', flex: 1, backgroundColor: 'transparent' }}>
-        {filteredUsers.map((user) => {
-          const calls = allCalls[user.id] || [];
-          const talkTime = calls.reduce((acc: number, c: CallRecord) => acc + c.duration, 0);
-          const isActive = activeView === 'user' && selectedUser?.id === user.id;
-          const userIndex = users.findIndex((u) => u.id === user.id);
-
-          const phoneNumbersString = user.phoneNumbers
-            ? user.phoneNumbers.map((n: any) => n.phoneNumber).filter(Boolean).join(', ')
-            : '';
-
-          return (
-            <ListItemButton
-              key={user.id}
-              onClick={() => onSelect(user)}
-              selected={isActive}
+      {/* Div 2: Users section - scrollable */}
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Box sx={{ p: 2, borderBottom: '1px solid var(--border)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text2)', letterSpacing: '1px' }}>
+            USERS &middot; {isMondayLeads ? MONDAY_USERS.length : filteredUsers.length}
+          </Typography>
+          {!isMondayLeads && (
+            <TextField
+              variant="outlined"
+              placeholder="Search name or phone..."
+              size="small"
+              fullWidth
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               sx={{
-                py: 2,
-                borderBottom: '1px solid var(--border)',
-                borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
-                backgroundColor: isActive ? 'rgba(0, 217, 245, 0.05)' : 'transparent',
-                '&.Mui-selected': {
-                  backgroundColor: 'rgba(0, 217, 245, 0.05)',
-                  '&:hover': { backgroundColor: 'rgba(0, 217, 245, 0.08)' }
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'var(--bg)',
+                  '& fieldset': { borderColor: 'var(--border2)' },
+                  '&:hover fieldset': { borderColor: 'var(--text3)' },
                 },
-                '&:hover': { backgroundColor: 'var(--surface2)' }
+                input: { color: 'var(--text)', fontSize: '0.9rem' }
               }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
-                <Avatar sx={{ bgcolor: getColor(userIndex >= 0 ? userIndex : 0), width: 36, height: 36, fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
-                  {getInitials(user.name)}
-                </Avatar>
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'var(--text3)', fontSize: '1.2rem' }} />
+                    </InputAdornment>
+                  ),
+                }
+              }}
+            />
+          )}
+          {isMondayLeads && (
+            <Typography sx={{ fontSize: '0.75rem', color: 'var(--text3)' }}>
+              Click to view this month&apos;s leads
+            </Typography>
+          )}
+        </Box>
 
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text)' }}>
-                    {getDisplayName(user, users)}
-                  </Typography>
-                  <Typography noWrap sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text2)' }}>
-                    {phoneNumbersString || 'No direct number'}
-                  </Typography>
-                </Box>
+        <List sx={{ p: 0, flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', backgroundColor: 'transparent' }}>
+          {isMondayLeads ? (
+            MONDAY_USERS.map((user, index) => {
+              const isActive = selectedMondayUser === user;
+              return (
+                <ListItemButton
+                  key={user}
+                  onClick={() => onSelectMondayUser?.(user)}
+                  selected={isActive}
+                  sx={{
+                    flexShrink: 0,
+                    py: 2,
+                    borderBottom: '1px solid var(--border)',
+                    borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
+                    backgroundColor: isActive ? 'rgba(0, 217, 245, 0.05)' : 'transparent',
+                    '&.Mui-selected': {
+                      backgroundColor: 'rgba(0, 217, 245, 0.05)',
+                      '&:hover': { backgroundColor: 'rgba(0, 217, 245, 0.08)' }
+                    },
+                    '&:hover': { backgroundColor: 'var(--surface2)' }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
+                    <Avatar sx={{ bgcolor: getColor(index), width: 36, height: 36, fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
+                      {user.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                    </Avatar>
+                    <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.9rem', color: isActive ? 'var(--accent)' : 'var(--text)' }}>
+                      {user}
+                    </Typography>
+                  </Box>
+                </ListItemButton>
+              );
+            })
+          ) : (
+            filteredUsers.map((user) => {
+              const calls = allCalls[user.id] || [];
+              const talkTime = calls.reduce((acc: number, c: CallRecord) => acc + c.duration, 0);
+              const isActive = activeView === 'user' && selectedUser?.id === user.id;
+              const userIndex = users.findIndex((u) => u.id === user.id);
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent)' }}>
-                    {calls.length}
-                  </Typography>
-                  <Typography sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text3)' }}>
-                    {fmtDuration(talkTime)}
-                  </Typography>
-                </Box>
-              </Box>
-            </ListItemButton>
-          );
-        })}
-      </List>
+              const phoneNumbersString = user.phoneNumbers
+                ? user.phoneNumbers.map((n: any) => n.phoneNumber).filter(Boolean).join(', ')
+                : '';
+
+              return (
+                <ListItemButton
+                  key={user.id}
+                  onClick={() => onSelect(user)}
+                  selected={isActive}
+                  sx={{
+                    flexShrink: 0,
+                    py: 2,
+                    borderBottom: '1px solid var(--border)',
+                    borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
+                    backgroundColor: isActive ? 'rgba(0, 217, 245, 0.05)' : 'transparent',
+                    '&.Mui-selected': {
+                      backgroundColor: 'rgba(0, 217, 245, 0.05)',
+                      '&:hover': { backgroundColor: 'rgba(0, 217, 245, 0.08)' }
+                    },
+                    '&:hover': { backgroundColor: 'var(--surface2)' }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
+                    <Avatar sx={{ bgcolor: getColor(userIndex >= 0 ? userIndex : 0), width: 36, height: 36, fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>
+                      {getInitials(user.name)}
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text)' }}>
+                        {getDisplayName(user, users)}
+                      </Typography>
+                      <Typography noWrap sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text2)' }}>
+                        {phoneNumbersString || 'No direct number'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent)' }}>
+                        {calls.length}
+                      </Typography>
+                      <Typography sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text3)' }}>
+                        {fmtDuration(talkTime)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </ListItemButton>
+              );
+            })
+          )}
+        </List>
+      </Box>
     </Drawer>
   );
 }

@@ -79,7 +79,7 @@ export default function UserDetail({
   const userColor = getColor(userIndex);
 
   return (
-    <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: 4, pb: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
           <Avatar sx={{ bgcolor: userColor, width: 64, height: 64, borderRadius: 3, fontSize: '1.5rem', fontWeight: 700, color: '#fff' }}>

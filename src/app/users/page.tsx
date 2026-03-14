@@ -10,7 +10,7 @@ export default function UsersPage() {
   const router = useRouter();
 
   const handleBannerClick = () => {
-    router.push('/');
+    router.push('/dashboard');
   };
 
   return (

@@ -73,7 +73,7 @@ export function useGlobalContext() {
   return context;
 }
 
-const WHITELIST1 = ['Charles White', 'Ethan Parker', 'Tony Royce'];
+const WHITELIST1 = ['Ethan Parker', 'Tony Royce'];
 const WHITELIST2 = ['Winston Smith', 'Alex Chester', 'Henry Safety Department', 'Michael Cole'];
 
 async function sleep(ms: number) {
@@ -95,6 +95,12 @@ async function fetchWithRetry(url: string, headers: Record<string, string>, retr
     return res.json();
   }
   throw new Error('Max retries exceeded');
+}
+
+/** RingCentral returns various result values for hangups; UI shows "Hang Up", API may use "HungUp" or "Hang Up" */
+const HANGUP_RESULTS = ['HungUp', 'Hang Up', 'Hang up', 'Declined', 'Disconnected', 'Busy', 'Rejected'];
+function isHangupResult(result: string): boolean {
+  return HANGUP_RESULTS.includes(result || '');
 }
 
 interface GlobalProviderProps {
@@ -158,18 +164,21 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
       const usersData1 = await usersRes1.json();
       const account1Users = (usersData1.records || []).filter((u: any) => WHITELIST1.includes(u.name));
 
-      // Account 2 users
+      // Account 2 users (API paginates & uses flexible name matching - trust its result)
       const usersRes2 = await fetch('/api/account2/users');
       const usersData2 = await usersRes2.json();
-      const account2Users = (usersData2.users || []).filter((u: any) => WHITELIST2.includes(u.name));
+      const account2Users = usersData2.users || [];
 
       const targetUsers = [
         ...account1Users.map((u: any) => ({ ...u, _account: 'account1' as const })),
         ...account2Users.map((u: any) => ({ ...u, _account: 'account2' as const })),
       ];
 
-      const dateFrom = fromDate.toISOString().split('T')[0];
-      const dateTo = toDate.toISOString().split('T')[0];
+      // Use full ISO: dateFrom = start of day, dateTo = end of day (RingCentral interprets date-only as midnight, which excludes the end date)
+      const dateFrom = fromDate.toISOString().split('T')[0] + 'T00:00:00.000Z';
+      const toEnd = new Date(toDate);
+      toEnd.setHours(23, 59, 59, 999);
+      const dateTo = toEnd.toISOString();
 
       const results: WaitingUserStat[] = [];
 
@@ -228,7 +237,7 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
           inbound: calls.filter(c => c.direction === 'Inbound').length,
           missed: calls.filter(c => c.result === 'Missed').length,
           voicemail: calls.filter(c => c.result === 'Voicemail').length,
-          hangup: calls.filter(c => c.result === 'HungUp' || c.result === 'Declined').length,
+          hangup: calls.filter(c => isHangupResult(c.result)).length,
           connected: calls.filter(c => c.result === 'Accepted' || c.result === 'Call connected').length,
         });
       }

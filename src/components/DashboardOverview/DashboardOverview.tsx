@@ -186,7 +186,7 @@ export default function DashboardOverview({
         {dashTab === 'custom' ? (
           <WaitingDashboard />
         ) : (
-          <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Box sx={{ p: 3, pb: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
 
             {/* Subtitle */}
             <Box>

@@ -163,7 +163,7 @@ export default function WaitingDashboard() {
     };
 
     return (
-        <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ p: 3, pb: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
 
             {/* Header + Controls */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
