@@ -3,7 +3,7 @@
 import { Box, Drawer, Typography, List, ListItemButton, Avatar } from '@mui/material';
 import { getColor } from '@/utils/helpers';
 
-export const MONDAY_USERS = ['Alex Chester', 'Ethan', 'Winston', 'Jessica'] as const;
+export const MONDAY_USERS = ['Alex Chester', 'Fred', 'Ethan', 'Winston', 'Jessica'] as const;
 
 interface MondaySidebarProps {
   selectedUser: string | null;

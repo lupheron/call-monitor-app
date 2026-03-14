@@ -79,6 +79,8 @@ export interface MondayLead {
   email: string;
   note: string;
   dateContact: string;
+  /** Original owner (empty = board owner). Shown in table. */
+  ownerLead?: string;
   /** On time / Late / Pending (10min SLA during shift) */
   timing?: 'On time' | 'Late' | 'Pending';
 }
@@ -202,7 +204,10 @@ export default function UserLeadsDetail({ userName, userIndex, cachedData, onCac
             {userName}
           </Typography>
           <Typography sx={{ fontSize: '0.9rem', color: 'var(--text2)' }}>
-            This month&apos;s leads: {leads.length}
+            This month&apos;s leads: {leads.length} in table
+            {Object.values(statusCounts).reduce((a, b) => a + b, 0) !== leads.length && (
+              <> · {Object.values(statusCounts).reduce((a, b) => a + b, 0)} counted (by owner)</>
+            )}
             {leads.some((l) => l.timing) && (
               <>
                 {' · '}
@@ -410,6 +415,7 @@ export default function UserLeadsDetail({ userName, userIndex, cachedData, onCac
                 <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 130 }}>Number</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 180 }}>Email</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 120 }}>Date contact</TableCell>
+                <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 100 }}>Owner lead</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 110 }}>Late / On time</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 200 }}>Note</TableCell>
               </TableRow>
@@ -440,6 +446,9 @@ export default function UserLeadsDetail({ userName, userIndex, cachedData, onCac
                   <TableCell sx={{ color: '#fff', fontFamily: 'var(--font-mono)' }}>{lead.number}</TableCell>
                   <TableCell sx={{ color: '#fff' }}>{lead.email}</TableCell>
                   <TableCell sx={{ color: '#fff' }}>{lead.dateContact}</TableCell>
+                  <TableCell sx={{ color: '#fff', fontSize: '0.85rem' }}>
+                    {lead.ownerLead || '—'}
+                  </TableCell>
                   <TableCell>
                     <Box
                       component="span"

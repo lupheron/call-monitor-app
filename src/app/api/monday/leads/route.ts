@@ -3,13 +3,30 @@ import { NextResponse } from 'next/server';
 const MONDAY_API = 'https://api.monday.com/v2';
 
 const USER_BOARD_MAP: Record<string, string[]> = {
+  'Fred': ['New leads Fred', 'Follow up Fred'],
   'Alex Chester': ['New leads Alex', 'Follow up Alex'],
   'Ethan': ['New leads Ethan', 'Follow up Ethan'],
   'Winston': ['New leads Winston', 'Follow up Winston'],
   'Jessica': ['New leads Jessica', 'Follow up Jessica'],
 };
 
-export const MONDAY_USERS = ['Alex Chester', 'Ethan', 'Winston', 'Jessica'] as const;
+export const MONDAY_USERS = ['Alex Chester', 'Fred', 'Ethan', 'Winston', 'Jessica'] as const;
+
+/** Map board name -> user who owns that board (for Owner_lead fallback when empty) */
+const BOARD_TO_USER: Record<string, string> = {};
+for (const [user, boards] of Object.entries(USER_BOARD_MAP)) {
+  for (const b of boards) {
+    BOARD_TO_USER[b.trim()] = user;
+  }
+}
+
+/** Check if ownerLead value matches this user (flexible: "Alex" matches "Alex Chester") */
+function ownerMatchesUser(ownerLead: string, userName: string): boolean {
+  const o = (ownerLead || '').trim().toLowerCase();
+  const u = (userName || '').trim().toLowerCase();
+  if (!o) return false;
+  return u === o || u.startsWith(o + ' ') || o.startsWith(u.split(' ')[0] + ' ') || u.split(' ')[0] === o.split(' ')[0];
+}
 
 async function mondayGraphql(query: string, variables?: Record<string, unknown>) {
   const token = process.env.MONDAY_API_TOKEN;
@@ -108,7 +125,7 @@ function normalizeStatus(raw: string): string {
   return 'Other';
 }
 
-import { getLeadTiming, type LeadTimingResult } from '@/utils/leadShift';
+import { getLeadTiming, parseAsUSCentral, type LeadTimingResult } from '@/utils/leadShift';
 
 export interface MondayLead {
   id: string;
@@ -126,6 +143,8 @@ export interface MondayLead {
   email: string;
   note: string;
   dateContact: string;
+  /** Original owner (empty = board owner). Used for stats: leads count toward owner, not board. */
+  ownerLead: string;
   /** Computed: On time / Late / Pending (based on 10min SLA during shift hours) */
   timing: LeadTimingResult;
 }
@@ -140,10 +159,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const userName = searchParams.get('user');
     if (!userName || !USER_BOARD_MAP[userName]) {
-      return NextResponse.json({ error: 'Invalid user. Use: Alex Chester, Ethan, Winston, Jessica' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid user. Use: Alex Chester, Fred, Ethan, Winston, Jessica' }, { status: 400 });
     }
 
-    const boardNames = USER_BOARD_MAP[userName];
+    const boardNamesForDisplay = USER_BOARD_MAP[userName];
+    const allBoardNames = Object.values(USER_BOARD_MAP).flat();
     const { from: monthFrom, to: monthTo } = getThisMonthRange();
 
     const boardsQuery = `
@@ -156,8 +176,9 @@ export async function GET(request: Request) {
     `;
     const boardsRes = await mondayGraphql(boardsQuery);
     const allBoards = boardsRes?.data?.boards || [];
-    const matchedBoards = allBoards.filter((b: { name: string }) =>
-      boardNames.some((n) => (b.name || '').trim() === n.trim())
+    // Fetch ALL users' boards so we can count transferred leads (e.g. Alex's leads in Jessica's board)
+    const boardsToFetch = allBoards.filter((b: { name: string }) =>
+      allBoardNames.some((n) => (b.name || '').trim() === n.trim())
     );
 
     const itemsPageFields = `
@@ -195,7 +216,7 @@ export async function GET(request: Request) {
       }
     `;
 
-    const allLeads: MondayLead[] = [];
+    const allLeads: { lead: MondayLead; boardName: string }[] = [];
     const statusCounts: Record<string, number> = {
       'N/A': 0,
       'Processing': 0,
@@ -208,7 +229,7 @@ export async function GET(request: Request) {
 
     type MondayItem = { id: string; name?: string; created_at?: string; column_values?: { column?: { id?: string; title?: string }; id?: string; type?: string; text?: string; value?: string }[] };
 
-    for (const board of matchedBoards) {
+    for (const board of boardsToFetch) {
       let cursor: string | null = null;
       let items: MondayItem[] = [];
 
@@ -239,6 +260,7 @@ export async function GET(request: Request) {
         let email = '';
         let note = '';
         let dateContact = '';
+        let ownerLead = '';
         let leadDateParsed: Date | null = null;
 
         let statusFromStatus2 = '';
@@ -250,8 +272,8 @@ export async function GET(request: Request) {
           const val = getColumnValue(col);
           columns[col.column?.title || col.column?.id || ''] = val;
 
-          // Only use explicit Status columns - NEVER Person/People/Assignee (those have names like "Ethan")
-          const isPersonColumn = title.includes('person') || title.includes('people') || title.includes('assignee') || title.includes('owner') || col.type === 'people';
+          // Only use explicit Status columns - NEVER Person/People/Assignee (but allow Owner_lead)
+          const isPersonColumn = title.includes('person') || title.includes('people') || title.includes('assignee') || (title.includes('owner') && !title.includes('lead')) || col.type === 'people';
           if (isPersonColumn) continue;
 
           if (rawTitle === 'Status 2' || title === 'status 2') statusFromStatus2 = val;
@@ -260,7 +282,14 @@ export async function GET(request: Request) {
           if (title.includes('company')) company = val;
           if (title === 'date' && !title.includes('contact')) {
             date = val;
-            leadDateParsed = parseDateFromColumn(col) ?? parseDateColumn(val);
+            // Lead arrival is in US Central time
+            const rawDateStr = val || (() => {
+              try {
+                const v = typeof col.value === 'string' ? JSON.parse(col.value) : col.value;
+                return v?.date ?? v?.startDate ?? v?.start_date ?? '';
+              } catch { return ''; }
+            })();
+            leadDateParsed = parseAsUSCentral(rawDateStr) ?? parseDateFromColumn(col) ?? parseDateColumn(val);
           }
           if (title.includes('platform')) platform = val;
           if (title.includes('position')) position = val;
@@ -270,6 +299,7 @@ export async function GET(request: Request) {
           if (title.includes('email')) email = val;
           if (title.includes('note')) note = val;
           if (title.includes('date contact') || title.includes('datecontact')) dateContact = val;
+          if (title.includes('owner') && title.includes('lead')) ownerLead = val;
         }
         status = statusFromStatus2 || statusFromStatus || statusFromAny || '';
 
@@ -283,6 +313,9 @@ export async function GET(request: Request) {
         const leadArrival = leadDate ?? createdAt;
         const dateContactParsed = parseDateColumn(dateContact) ?? (dateContact ? new Date(dateContact) : null);
         const timing = getLeadTiming(leadArrival, dateContactParsed);
+
+        const boardOwner = BOARD_TO_USER[board.name?.trim() || ''] || userName;
+        const countingOwner = ownerLead.trim() ? ownerLead.trim() : boardOwner;
 
         const lead: MondayLead = {
           id: item.id,
@@ -300,13 +333,18 @@ export async function GET(request: Request) {
           email,
           note,
           dateContact,
+          ownerLead: ownerLead.trim(),
           timing,
         };
 
-        allLeads.push(lead);
+        allLeads.push({ lead, boardName: board.name?.trim() || '' });
 
-        const statusKey = Object.keys(statusCounts).includes(displayStatus) ? displayStatus : 'Other';
-        statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
+        // Stats count toward the original owner (Owner_lead or board owner), not the board viewer
+        const countsForThisUser = ownerMatchesUser(countingOwner, userName);
+        if (countsForThisUser) {
+          const statusKey = Object.keys(statusCounts).includes(displayStatus) ? displayStatus : 'Other';
+          statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
+        }
         }
 
       } while (cursor);
@@ -314,11 +352,17 @@ export async function GET(request: Request) {
       await new Promise((r) => setTimeout(r, 300));
     }
 
+    // Display: only leads from this user's boards. Stats: already filtered by countingOwner
+    const displayLeads = allLeads
+      .filter(({ boardName }) => boardNamesForDisplay.some((n) => n.trim() === boardName))
+      .map(({ lead }) => lead);
+
     return NextResponse.json({
       user: userName,
-      totalLeads: allLeads.length,
+      totalLeads: displayLeads.length,
+      totalCountedLeads: Object.values(statusCounts).reduce((a, b) => a + b, 0),
       statusCounts,
-      leads: allLeads,
+      leads: displayLeads,
     });
   } catch (err: unknown) {
     console.error('[monday/leads] Error:', err);

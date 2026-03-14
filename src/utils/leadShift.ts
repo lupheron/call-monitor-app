@@ -2,10 +2,59 @@
  * Shift-aware late/on-time logic for leads.
  * Operators work Mon–Fri 7pm–4am, Sat 7pm–2am (Tashkent = UTC+5). Sunday off.
  * SLA: Call within 10 minutes of "working time" (countdown only during shift).
+ * Lead arrival (Date column) is in US Central time.
  */
 
 const TASHKENT_UTC_OFFSET_MS = 5 * 60 * 60 * 1000;
 const SLA_MINUTES = 10;
+
+/** US Central DST: 2nd Sunday March – 1st Sunday November. Returns offset in hours (e.g. -5 for CDT, -6 for CST). */
+function getCentralOffsetHours(year: number, month: number, day: number): number {
+  const getFirstSunday = (y: number, m: number) => {
+    const first = new Date(Date.UTC(y, m, 1));
+    const firstDow = first.getUTCDay();
+    return firstDow === 0 ? 1 : 8 - firstDow;
+  };
+  const marchSecondSun = getFirstSunday(year, 2) + 7;
+  const novFirstSun = getFirstSunday(year, 10);
+  const d = new Date(Date.UTC(year, month, day));
+  const dstStart = new Date(Date.UTC(year, 2, marchSecondSun));
+  const dstEnd = new Date(Date.UTC(year, 10, novFirstSun));
+  const inDST = d >= dstStart && d < dstEnd;
+  return inDST ? -5 : -6;
+}
+
+/**
+ * Parse a date string as US Central time. Leads arrive in US Central.
+ * Handles ISO (2026-03-14, 2026-03-14T20:00:00), date-only, and common formats.
+ */
+export function parseAsUSCentral(dateStr: string | null | undefined): Date | null {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const s = dateStr.trim();
+  if (!s) return null;
+
+  let year: number, month: number, day: number, hour: number, min: number, sec: number;
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (isoMatch) {
+    [, year, month, day, hour, min, sec] = isoMatch.map((x, i) => (i > 0 ? parseInt(x || '0', 10) : 0));
+    month -= 1;
+  } else {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return null;
+    year = d.getFullYear();
+    month = d.getMonth();
+    day = d.getDate();
+    hour = d.getHours();
+    min = d.getMinutes();
+    sec = d.getSeconds();
+  }
+
+  const offset = getCentralOffsetHours(year, month, day);
+  const offsetStr = offset >= 0 ? `+${String(offset).padStart(2, '0')}:00` : `-${String(-offset).padStart(2, '0')}:00`;
+  const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}${offsetStr}`;
+  const parsed = new Date(iso);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
 
 /** Get Tashkent local time components from a UTC Date */
 function toTashkent(date: Date): { hours: number; minutes: number; dayOfWeek: number } {
