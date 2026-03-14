@@ -36,7 +36,7 @@ import { getColor } from '@/utils/helpers';
 const STATUS_VALUES = ['Not touched', 'Follow up', 'Rejected', 'N/A', 'Not valid lead', 'Processing'] as const;
 
 const STATUS_COLORS: Record<string, string> = {
-  'Not touched': '#6B7280',
+  'Not touched': '#9265ab',
   'Follow up': '#579BFC',
   'Rejected': '#E2445C',
   'N/A': '#9B9B9B',
