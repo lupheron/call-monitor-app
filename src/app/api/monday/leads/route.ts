@@ -108,6 +108,8 @@ function normalizeStatus(raw: string): string {
   return 'Other';
 }
 
+import { getLeadTiming, type LeadTimingResult } from '@/utils/leadShift';
+
 export interface MondayLead {
   id: string;
   name: string;
@@ -124,6 +126,8 @@ export interface MondayLead {
   email: string;
   note: string;
   dateContact: string;
+  /** Computed: On time / Late / Pending (based on 10min SLA during shift hours) */
+  timing: LeadTimingResult;
 }
 
 export async function GET(request: Request) {
@@ -276,6 +280,10 @@ export async function GET(request: Request) {
         if (dateForFilter && (dateForFilter < monthFrom || dateForFilter > monthTo)) continue;
 
         const displayStatus = normalizeStatus(status || '');
+        const leadArrival = leadDate ?? createdAt;
+        const dateContactParsed = parseDateColumn(dateContact) ?? (dateContact ? new Date(dateContact) : null);
+        const timing = getLeadTiming(leadArrival, dateContactParsed);
+
         const lead: MondayLead = {
           id: item.id,
           name: item.name || '',
@@ -292,6 +300,7 @@ export async function GET(request: Request) {
           email,
           note,
           dateContact,
+          timing,
         };
 
         allLeads.push(lead);

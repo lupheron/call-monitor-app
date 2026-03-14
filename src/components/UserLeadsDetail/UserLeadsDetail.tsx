@@ -79,6 +79,8 @@ export interface MondayLead {
   email: string;
   note: string;
   dateContact: string;
+  /** On time / Late / Pending (10min SLA during shift) */
+  timing?: 'On time' | 'Late' | 'Pending';
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -201,6 +203,18 @@ export default function UserLeadsDetail({ userName, userIndex, cachedData, onCac
           </Typography>
           <Typography sx={{ fontSize: '0.9rem', color: 'var(--text2)' }}>
             This month&apos;s leads: {leads.length}
+            {leads.some((l) => l.timing) && (
+              <>
+                {' · '}
+                <Box component="span" sx={{ color: '#00C875' }}>
+                  {leads.filter((l) => l.timing === 'On time').length} on time
+                </Box>
+                {' · '}
+                <Box component="span" sx={{ color: '#E2445C' }}>
+                  {leads.filter((l) => l.timing === 'Late').length} late
+                </Box>
+              </>
+            )}
           </Typography>
         </Box>
       </Box>
@@ -396,6 +410,7 @@ export default function UserLeadsDetail({ userName, userIndex, cachedData, onCac
                 <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 130 }}>Number</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 180 }}>Email</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 120 }}>Date contact</TableCell>
+                <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 110 }}>Late / On time</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600, minWidth: 200 }}>Note</TableCell>
               </TableRow>
             </TableHead>
@@ -425,6 +440,32 @@ export default function UserLeadsDetail({ userName, userIndex, cachedData, onCac
                   <TableCell sx={{ color: '#fff', fontFamily: 'var(--font-mono)' }}>{lead.number}</TableCell>
                   <TableCell sx={{ color: '#fff' }}>{lead.email}</TableCell>
                   <TableCell sx={{ color: '#fff' }}>{lead.dateContact}</TableCell>
+                  <TableCell>
+                    <Box
+                      component="span"
+                      sx={{
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: 1,
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        bgcolor:
+                          lead.timing === 'On time'
+                            ? 'rgba(0,200,117,0.2)'
+                            : lead.timing === 'Late'
+                              ? 'rgba(226,68,92,0.2)'
+                              : 'rgba(107,114,128,0.2)',
+                        color:
+                          lead.timing === 'On time'
+                            ? '#00C875'
+                            : lead.timing === 'Late'
+                              ? '#E2445C'
+                              : '#9ca3af',
+                      }}
+                    >
+                      {lead.timing ?? 'Pending'}
+                    </Box>
+                  </TableCell>
                   <TableCell sx={{ color: '#fff', minWidth: 200 }} title={lead.note}>
                     {lead.note?.slice(0, 80)}
                     {lead.note && lead.note.length > 80 ? '…' : ''}
