@@ -15,8 +15,8 @@ import { useGlobalContext } from '@/components/GlobalContext';
 import { useRouter } from 'next/navigation';
 import { MONDAY_USERS } from '@/components/MondaySidebar/MondaySidebar';
 
-const WHITELIST = ['Charles White', 'Ethan Parker', 'Tony Royce'];
-const WHITELIST2 = ['Winston Smith', 'Alex Chester', 'Henry Safety Department', 'Michael Cole'];
+const WHITELIST = ['Ethan Parker', 'Fred Royce'];
+const WHITELIST2 = ['Winston Smith', 'Alex Chester', 'Henry Safety Department', 'Jessica Miller'];
 const ALL_WHITELIST = [...WHITELIST, ...WHITELIST2];
 
 export default function Home() {

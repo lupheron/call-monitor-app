@@ -73,8 +73,11 @@ export function useGlobalContext() {
   return context;
 }
 
-const WHITELIST1 = ['Ethan Parker', 'Tony Royce'];
-const WHITELIST2 = ['Winston Smith', 'Alex Chester', 'Henry Safety Department', 'Michael Cole'];
+const WHITELIST1 = ['Ethan Parker', 'Fred Royce'];
+const WHITELIST2 = ['Winston Smith', 'Alex Chester', 'Henry Safety Department', 'Jessica Miller'];
+
+/** RingCentral max perPage for call-log; use 1000 to avoid truncating users with 100+ calls */
+const CALL_LOG_PER_PAGE = 1000;
 
 async function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));
@@ -196,11 +199,11 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
         while (hasMore) {
           let data: any;
           if (user._account === 'account1') {
-            const url = `/api/rc/v1.0/account/~/extension/${user.id}/call-log?view=Detailed&type=Voice&dateFrom=${dateFrom}&dateTo=${dateTo}&page=${page}&perPage=100`;
+            const url = `/api/rc/v1.0/account/~/extension/${user.id}/call-log?view=Detailed&type=Voice&dateFrom=${dateFrom}&dateTo=${dateTo}&page=${page}&perPage=${CALL_LOG_PER_PAGE}`;
             data = await fetchWithRetry(url, { 'x-rc-auth': token });
           } else {
             await sleep(1200);
-            const url = `/api/account2/call-log?extensionId=${encodeURIComponent(user.id)}&dateFrom=${dateFrom}&dateTo=${dateTo}&page=${page}`;
+            const url = `/api/account2/call-log?extensionId=${encodeURIComponent(user.id)}&dateFrom=${dateFrom}&dateTo=${dateTo}&page=${page}&perPage=${CALL_LOG_PER_PAGE}`;
             const res = await fetch(url);
             if (!res.ok) {
               const err = await res.json().catch(() => ({}));
@@ -223,9 +226,9 @@ export function GlobalProvider({ children }: GlobalProviderProps) {
             });
           });
 
-          hasMore = records.length === 100;
+          hasMore = records.length >= CALL_LOG_PER_PAGE;
           page++;
-          if (page > 20) break;
+          if (page > 50) break; // safety: max 50k calls per user
         }
 
         results.push({

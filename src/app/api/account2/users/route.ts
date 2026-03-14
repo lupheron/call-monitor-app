@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server';
 
-const WHITELIST2 = ['Winston Smith', 'Alex Chester', 'Henry Safety Department', 'Michael Cole'];
+const WHITELIST2 = ['Winston Smith', 'Alex Chester', 'Henry Safety Department', 'Jessica Miller'];
 
 /** Normalize name for flexible matching (case, extra spaces, "Last, First" format) */
 function normalizeName(name: string): string {
   return (name || '').toLowerCase().replace(/[,.\s]+/g, ' ').trim().replace(/\s+/g, ' ');
 }
 
-/** Build set of normalized name variants: "Michael Cole" -> {"michael cole", "cole michael"} */
+/** Build set of normalized name variants: "Jessica Miller" -> {"jessica miller", "miller jessica"} */
 function buildWhitelistSet(): Set<string> {
   const set = new Set<string>();
   for (const name of WHITELIST2) {
     const n = normalizeName(name);
     set.add(n);
     const parts = n.split(/\s+/);
-    if (parts.length >= 2) set.add(parts.reverse().join(' ')); // "Cole, Michael" -> "cole michael"
+    if (parts.length >= 2) set.add(parts.reverse().join(' ')); // "Miller, Jessica" -> "miller jessica"
   }
   return set;
 }

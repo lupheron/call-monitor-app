@@ -40,9 +40,11 @@ async function getAccount2Token(): Promise<string> {
   }
 
   const tokenData = await tokenRes.json();
-  cachedToken = tokenData.access_token;
+  const token = tokenData.access_token;
+  if (!token) throw new Error('No access token in response');
+  cachedToken = token;
   tokenExpiry = Date.now() + (tokenData.expires_in || 3600) * 1000 * 0.9;
-  return cachedToken;
+  return token;
 }
 
 export async function GET(request: NextRequest) {
@@ -52,6 +54,7 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
     const page = searchParams.get('page') || '1';
+    const perPage = searchParams.get('perPage') || '1000';
 
     if (!extensionId || !dateFrom || !dateTo) {
       return NextResponse.json({ error: 'Missing extensionId, dateFrom, or dateTo' }, { status: 400 });
@@ -59,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     const token = await getAccount2Token();
 
-    const url = `${RC_BASE}/v1.0/account/~/extension/${encodeURIComponent(extensionId)}/call-log?view=Detailed&type=Voice&dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&page=${page}&perPage=100`;
+    const url = `${RC_BASE}/v1.0/account/~/extension/${encodeURIComponent(extensionId)}/call-log?view=Detailed&type=Voice&dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&page=${page}&perPage=${perPage}`;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
     if (!res.ok) {
