@@ -16,7 +16,6 @@ export default function Sidebar({
   onSelect,
   activeView,
   onSelectDashboard,
-  onSelectMonday,
   onSelectMondayLeads,
   selectedMondayUser,
   onSelectMondayUser,
@@ -25,9 +24,8 @@ export default function Sidebar({
   allCalls: UserCalls;
   selectedUser: RCUser | null;
   onSelect: (user: RCUser) => void;
-  activeView: 'overview' | 'user' | 'monday' | 'monday-leads';
+  activeView: 'overview' | 'user' | 'monday-leads';
   onSelectDashboard: () => void;
-  onSelectMonday?: () => void;
   onSelectMondayLeads?: () => void;
   selectedMondayUser?: string | null;
   onSelectMondayUser?: (user: string) => void;
@@ -64,7 +62,7 @@ export default function Sidebar({
         },
       }}
     >
-      {/* Div 1: Nav items - Dashboard, Monday Chart, Monday Leads */}
+      {/* Div 1: Nav items - Dashboard, Monday Leads */}
       <Box sx={{ flexShrink: 0 }}>
         <ListItemButton
           onClick={onSelectDashboard}
@@ -96,39 +94,6 @@ export default function Sidebar({
             </Box>
           </Box>
         </ListItemButton>
-
-        {onSelectMonday && (
-          <ListItemButton
-            onClick={onSelectMonday}
-            selected={activeView === 'monday'}
-            sx={{
-              py: 4.1,
-              px: 2,
-              borderBottom: '1px solid var(--border)',
-              borderLeft: activeView === 'monday' ? '3px solid var(--accent)' : '3px solid transparent',
-              backgroundColor: activeView === 'monday' ? 'rgba(0, 217, 245, 0.05)' : 'transparent',
-              '&.Mui-selected': {
-                backgroundColor: 'rgba(0, 217, 245, 0.05)',
-                '&:hover': { backgroundColor: 'rgba(0, 217, 245, 0.08)' }
-              },
-              '&:hover': { backgroundColor: 'var(--surface2)' }
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
-              <Avatar sx={{ bgcolor: 'var(--surface3)', width: 36, height: 36, borderRadius: 2 }}>
-                <BarChartIcon sx={{ fontSize: '1.1rem', color: activeView === 'monday' ? 'var(--accent)' : 'var(--text2)' }} />
-              </Avatar>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.9rem', color: activeView === 'monday' ? 'var(--accent)' : 'var(--text2)' }}>
-                  Monday Chart
-                </Typography>
-                <Typography noWrap sx={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text3)' }}>
-                  HR Leads
-                </Typography>
-              </Box>
-            </Box>
-          </ListItemButton>
-        )}
 
         {onSelectMondayLeads && (
           <ListItemButton

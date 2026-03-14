@@ -8,7 +8,6 @@ import Sidebar from '@/components/Sidebar/Sidebar';
 import StatsRow from '@/components/StatsRow/StatsRow';
 import UserDetail from '@/components/UserDetail/UserDetail';
 import DashboardOverview from '@/components/DashboardOverview/DashboardOverview';
-import MondayDashboard from '@/components/MondayDashboard/MondayDashboard';
 import UserLeadsDetail from '@/components/UserLeadsDetail/UserLeadsDetail';
 import { RCUser, UserCalls } from '@/types';
 import { useGlobalContext } from '@/components/GlobalContext';
@@ -21,10 +20,9 @@ const ALL_WHITELIST = [...WHITELIST, ...WHITELIST2];
 
 export default function Home() {
   const { users, setUsers, allCalls, setAllCalls, selectedUser, setSelectedUser, globalDateFilter, setGlobalDateFilter } = useGlobalContext();
-  const [activeView, setActiveView] = useState<'overview' | 'user' | 'monday' | 'monday-leads'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'user' | 'monday-leads'>('overview');
   const [selectedMondayUser, setSelectedMondayUser] = useState<string | null>('Jessica');
   const [mondayLeadsCache, setMondayLeadsCache] = useState<Record<string, { leads: any[]; statusCounts: Record<string, number>; ts: number }>>({});
-  const [mondayChartCache, setMondayChartCache] = useState<{ data: any; ts: number } | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
@@ -250,13 +248,12 @@ export default function Home() {
               onSelect={handleSelectUser}
               activeView={activeView}
               onSelectDashboard={() => setActiveView('overview')}
-              onSelectMonday={() => setActiveView('monday')}
               onSelectMondayLeads={() => setActiveView('monday-leads')}
               selectedMondayUser={selectedMondayUser}
               onSelectMondayUser={setSelectedMondayUser}
             />
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', pb: 6 }}>
-              {activeView !== 'monday' && activeView !== 'monday-leads' && <StatsRow users={users} allCalls={allCalls} />}
+              {activeView !== 'monday-leads' && <StatsRow users={users} allCalls={allCalls} />}
               <Box sx={{ px: 3, pt: 2, pb: 1, display: 'flex', justifyContent: activeView === 'monday-leads' ? 'space-between' : 'flex-end', alignItems: 'center' }}>
                 {activeView === 'monday-leads' && (
                   <Typography sx={{ fontSize: '0.9rem', color: 'var(--text2)' }}>Monday Leads · This month</Typography>
@@ -287,21 +284,11 @@ export default function Home() {
                   <ToggleButton value="user" disabled={!selectedUser}>
                     User detail
                   </ToggleButton>
-                  <ToggleButton value="monday">Monday Chart</ToggleButton>
                   <ToggleButton value="monday-leads">Monday Leads</ToggleButton>
                 </ToggleButtonGroup>
               </Box>
               {activeView === 'overview' && (
                 <DashboardOverview users={users} allCalls={allCalls} />
-              )}
-              {activeView === 'monday' && (
-                <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                  <MondayDashboard
-                    embedded
-                    cachedData={mondayChartCache && Date.now() - mondayChartCache.ts < 5 * 60 * 1000 ? mondayChartCache : null}
-                    onCacheUpdate={(data) => setMondayChartCache({ data, ts: Date.now() })}
-                  />
-                </Box>
               )}
               {activeView === 'user' && selectedUser && (
                 <UserDetail
