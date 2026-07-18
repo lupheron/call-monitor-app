@@ -21,7 +21,7 @@
 
 **Two RingCentral Accounts:**
 - **Account 1 (BP)** — First set of recruiters (Ethan, Fred, Michael, Nick, Tony)
-- **Account 2 (JDM)** — Second set of recruiters (Alex Chester, Winston, Jessica, Isaac, Alfred, Henry)
+- **Account 2 (JDM)** — Second set of recruiters (Alex Chester, Winston, Isaac, Alfred, Henry)
 
 ---
 
@@ -121,7 +121,7 @@ Before fetching call logs, the app needs to know which extension IDs belong to t
 
 ```
 Account 1 (BP): Ethan Parker, Fred Royce, HR Michael, Nick Allen, Tony Safety Department
-Account 2 (JDM): Alex Chester, Winston Smith, Jessica Miller, Isaac Taylor, Alfred Brooks, Henry Safety Department
+Account 2 (JDM): Alex Chester, Winston Smith, Isaac Taylor, Alfred Brooks, Henry Safety Department
 ```
 
 Only extensions whose names match the whitelist are included in call log fetches.
@@ -216,7 +216,6 @@ Fred         → "New leads Fred",    "Follow up Fred"
 Alex Chester → "New leads Alex",    "Follow up Alex"
 Ethan        → "New leads Ethan",   "Follow up Ethan"
 Winston      → "New leads Winston", "Follow up Winston"
-Jessica      → "New leads Jessica", "Follow up Jessica"
 ```
 
 When fetching leads for a user, the app looks up which boards belong to them and queries only those boards.
@@ -342,7 +341,7 @@ Authorization: Bearer <CRON_SECRET>
    - Fetch call log for shift window: 8:00 AM – 5:00 PM US Central time
    - Deduplicate calls by sessionId (RC returns multiple legs per call)
 
-4. For each recruiter (Ethan, Fred, Winston, Alex, Jessica, etc.):
+4. For each recruiter (Ethan, Fred, Winston, Alex, etc.):
    - Fetch Monday.com leads for that calendar day (US Central)
 
 5. Compute per-user stats:

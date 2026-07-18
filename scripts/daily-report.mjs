@@ -10,13 +10,12 @@ const RC_BASE = 'https://platform.ringcentral.com/restapi';
 const RC_DELAY_MS = 800;
 const RC_429_RETRY_MS = 65000;
 const WHITELIST_ACCOUNT1 = ['Ethan Parker', 'Fred Royce', 'Tony Safety Department'];
-const HR_RC_NAMES = new Set(['Ethan Parker', 'Fred Royce', 'Alex Chester', 'Winston Smith', 'Jessica Miller']);
+const HR_RC_NAMES = new Set(['Ethan Parker', 'Fred Royce', 'Alex Chester', 'Winston Smith']);
 const HR_RECRUITERS = [
   { rcName: 'Alex Chester', mondayUser: 'Alex Chester' },
   { rcName: 'Fred Royce', mondayUser: 'Fred' },
   { rcName: 'Ethan Parker', mondayUser: 'Ethan' },
   { rcName: 'Winston Smith', mondayUser: 'Winston' },
-  { rcName: 'Jessica Miller', mondayUser: 'Jessica' },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

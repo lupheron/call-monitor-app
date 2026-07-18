@@ -47,7 +47,7 @@ RC_CLIENT_ID=your_rc_client_id
 RC_CLIENT_SECRET=your_rc_client_secret
 RC_JWT=your_rc_jwt
 
-# Already set for account2 (Winston, Alex, Jessica)
+# Already set for account2 (Winston, Alex)
 RC2_CLIENT_ID=...
 RC2_CLIENT_SECRET=...
 RC2_JWT=...
@@ -59,7 +59,7 @@ CRON_SECRET=your_random_secret_string
 OPENAI_API_KEY=sk-...
 ```
 
-**Note:** `RC_CLIENT_ID`, `RC_CLIENT_SECRET`, `RC_JWT` are your main RingCentral app credentials (account1). If not set, the report will only include account2 users (Winston, Alex, Jessica) and will skip Ethan and Fred.
+**Note:** `RC_CLIENT_ID`, `RC_CLIENT_SECRET`, `RC_JWT` are your main RingCentral app credentials (account1). If not set, the report will only include account2 users (Winston, Alex) and will skip Ethan and Fred.
 
 **Note:** If `OPENAI_API_KEY` is not set, the report will still be sent but without the "Daily Outcome" and "Advice" sections.
 
@@ -85,7 +85,6 @@ OPENAI_API_KEY=sk-...
 | Fred | Fred Royce | account1 |
 | Ethan | Ethan Parker | account1 |
 | Winston | Winston Smith | account2 |
-| Jessica | Jessica Miller | account2 |
 
 **Excluded (Safety):** Tony Safety Department, Henry Safety Department
 
@@ -96,7 +95,7 @@ OPENAI_API_KEY=sk-...
 1. **New API route** `POST /api/telegram/daily-report`
    - Fetches 5 HR users (extension IDs from account1 + account2)
    - Calls `/api/calls` with `range=custom&dateFrom=&dateTo=` for shift window (8am–5pm US Central)
-   - Calls `/api/monday/leads?user=X` for each of Alex Chester, Fred, Ethan, Winston, Jessica
+   - Calls `/api/monday/leads?user=X` for each of Alex Chester, Fred, Ethan, Winston
    - Computes: talk time (min), late/on-time leads, missed/connected calls, rejected leads
    - Sends formatted message via Telegram Bot API
 

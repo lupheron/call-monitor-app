@@ -39,7 +39,6 @@ export const TELEGRAM_BP_ALL_RC_NAMES = new Set([
 /** Full JM roster (admin report includes everyone here). */
 export const TELEGRAM_JM_ALL_RC_NAMES = new Set([
   'Alex Chester',
-  'Jessica Miller',
   'Winston Smith',
   'Isaac Taylor',
   'Henry Safety Department',
@@ -54,7 +53,6 @@ export const TELEGRAM_REPORT_ROWS_ALL: readonly TelegramReportRow[] = [
   { rcName: 'Ethan Parker', mondayUser: 'Ethan' },
   { rcName: 'Tony Safety Department', mondayUser: null },
   { rcName: 'Alex Chester', mondayUser: 'Alex Chester' },
-  { rcName: 'Jessica Miller', mondayUser: 'Jessica' },
   { rcName: 'Winston Smith', mondayUser: 'Winston' },
   { rcName: 'Isaac Taylor', mondayUser: null },
   { rcName: 'Henry Safety Department', mondayUser: null },

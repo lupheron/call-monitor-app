@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const userName = searchParams.get('user');
     if (!userName || !USER_BOARD_MAP[userName]) {
-      return NextResponse.json({ error: 'Invalid user. Use: Alex Chester, Fred, Ethan, Winston, Jessica' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid user. Use: Alex Chester, Fred, Ethan, Winston, Alfred, Nick, Michael' }, { status: 400 });
     }
 
     const deploy = getServerDeployAccount();

@@ -6,14 +6,14 @@ function normalizeName(name: string): string {
   return (name || '').toLowerCase().replace(/[,.\s]+/g, ' ').trim().replace(/\s+/g, ' ');
 }
 
-/** Build set of normalized name variants: "Jessica Miller" -> {"jessica miller", "miller jessica"} */
+/** Build set of normalized name variants: "Winston Smith" -> {"winston smith", "smith winston"} */
 function buildWhitelistSet(): Set<string> {
   const set = new Set<string>();
   for (const name of WHITELIST_ACCOUNT2) {
     const n = normalizeName(name);
     set.add(n);
     const parts = n.split(/\s+/);
-    if (parts.length >= 2) set.add(parts.reverse().join(' ')); // "Miller, Jessica" -> "miller jessica"
+    if (parts.length >= 2) set.add(parts.reverse().join(' ')); // "Smith, Winston" -> "smith winston"
   }
   return set;
 }
