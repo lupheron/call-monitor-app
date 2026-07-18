@@ -4,10 +4,12 @@ export const USER_BOARD_MAP: Record<string, string[]> = {
   'Alex Chester': ['New leads Alex', 'Follow up Alex'],
   Ethan: ['New leads Ethan', 'Follow up Ethan'],
   Winston: ['New leads Winston', 'Follow up Winston'],
-  Jessica: ['New leads Jessica', 'Follow up Jessica'],
+  Alfred: ['New leads Alfred', 'Follow up Alfred'],
+  Nick: ['New leads Nick', 'Follow up Nick'],
+  Michael: ['New leads Michael', 'Follow up Michael'],
 };
 
-export const MONDAY_USERS = ['Alex Chester', 'Fred', 'Ethan', 'Winston', 'Jessica'] as const;
+export const MONDAY_USERS = ['Alex Chester', 'Fred', 'Ethan', 'Winston', 'Alfred', 'Nick', 'Michael'] as const;
 
 export const BOARD_TO_USER: Record<string, string> = {};
 for (const [user, boards] of Object.entries(USER_BOARD_MAP)) {
