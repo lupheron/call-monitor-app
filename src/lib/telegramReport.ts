@@ -22,9 +22,10 @@ export const HR_REPORT_RC_NAMES = new Set([
   'Winston Smith',
   'Isaac Taylor',
   'Nick Allen',
-  'Alfred Brooks',
+  'Simon Cooper',
   'HR Michael',
   'Henry Safety Department',
+  'Tim Baker'
 ]);
 
 /** Full BP roster (admin report includes everyone here). */
@@ -42,7 +43,8 @@ export const TELEGRAM_JM_ALL_RC_NAMES = new Set([
   'Winston Smith',
   'Isaac Taylor',
   'Henry Safety Department',
-  'Alfred Brooks'
+  'Simon Cooper',
+  'Tim Baker'
 ]);
 
 export type TelegramReportRow = { rcName: string; mondayUser: string | null };
@@ -56,9 +58,10 @@ export const TELEGRAM_REPORT_ROWS_ALL: readonly TelegramReportRow[] = [
   { rcName: 'Winston Smith', mondayUser: 'Winston' },
   { rcName: 'Isaac Taylor', mondayUser: null },
   { rcName: 'Henry Safety Department', mondayUser: null },
-  { rcName: 'Alfred Brooks', mondayUser: 'Alfred' },
+  { rcName: 'Simon Cooper', mondayUser: null },
   { rcName: 'Nick Allen', mondayUser: 'Nick' },
   { rcName: 'HR Michael', mondayUser: 'Michael' },
+  { rcName: 'Tim Baker', mondayUser: null },
 ];
 
 /** BP team chat: workers only (exclude Head HR Fred). */
